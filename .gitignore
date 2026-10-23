@@ -1,0 +1,12 @@
+bin/
+obj/
+dist/
+.temp/
+runtime/
+__pycache__/
+*.pyc
+.pytest_cache/
+node_modules/
+*.user
+data/
+*.log

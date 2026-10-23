@@ -1,0 +1,8 @@
+{
+  "repository": "https://github.com/ykarapazar/word-mcp-live",
+  "commit": "12bbff97873bbce38be2dde52af4a6209a92a381",
+  "version": "1.6.21",
+  "license": "MIT",
+  "tools": 120,
+  "integration": "All upstream tools are registered, without name filtering. PDF conversion is replaced at the module boundary to avoid closing the user's Word process. COM discovery is constrained to the bound Word instance."
+}
