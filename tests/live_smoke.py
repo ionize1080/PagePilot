@@ -8,7 +8,7 @@ c=Client(root,current_session())
 try:
     tools=c.request("tools/list",{})["tools"]
     print("Discovered tools:",len(tools),flush=True)
-    assert len(tools)==126
+    assert len(tools)==129
     context=c.call("pagepilot_context")
     assert not context.get("isError"),context
     print("Context:",str(context)[:500],flush=True)

@@ -1,6 +1,6 @@
 $ErrorActionPreference='Stop'
 # Only fixed PagePilot-owned registration keys are removed; settings/documents remain.
-$keys=@('Software\Microsoft\Office\Word\Addins\PagePilot.Connect',
+$keys=@('Software\Classes\PagePilot.AiPane','Software\Classes\CLSID\{246818DC-B9A5-4328-9E71-69575A825B92}','Software\Microsoft\Office\Word\Addins\PagePilot.Connect',
  'Software\Classes\PagePilot.Connect','Software\Classes\PagePilot.Pane',
  'Software\Classes\CLSID\{0E057EBB-B35B-4A31-9B65-3DF44E8034CE}',
  'Software\Classes\CLSID\{79CEEFC8-67F4-4F55-9475-24C0681BFBBD}')

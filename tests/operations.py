@@ -1,4 +1,4 @@
-"""Real Word + stdio regression matrix; enable auto approval in the QA UI first."""
+"""Real Word + stdio regression matrix; confirm auto approval for this fixture first."""
 import json
 from pathlib import Path
 import win32com.client
@@ -7,7 +7,10 @@ from mcp_client import Client,current_session
 root=Path(__file__).resolve().parents[1]
 app=win32com.client.GetActiveObject("Word.Application")
 doc=app.ActiveDocument
-assert doc.Name=="PagePilot-QA.docx", "Only synthetic QA document is allowed"
+assert doc.Name=="PagePilot-v020-QA.docx", "Only synthetic QA document is allowed"
+# Reset only our disposable fixture; never touch a user document.
+doc.Content.Text="第一章 总则\r第一节 范围\r收入从100增长到120，增长10%。\r第二章 结论\rQA text ABC 2024.\r"
+doc.TrackRevisions=False
 path=str(doc.FullName)
 c=Client(root/"dist",current_session())
 results=[]
@@ -53,12 +56,12 @@ try:
     call("word_live_list_revisions")
     call("word_live_get_paragraph_format",start_paragraph=2)
     call("word_live_diagnose_layout")
-    pdf=root.parent/"PagePilot-QA.pdf"
+    pdf=root.parent/"PagePilot-v020-QA.pdf"
     call("convert_to_pdf",filename=path,output_filename=str(pdf))
     assert pdf.exists() and pdf.stat().st_size>1000
-    assert app.Documents.Count==1 and app.ActiveDocument.Name=="PagePilot-QA.docx"
+    assert app.Documents.Count==1 and app.ActiveDocument.Name=="PagePilot-v020-QA.docx"
     call("word_live_save")
     print("Verified actual Word state for formatting, tables, hierarchy, revisions and PDF export",flush=True)
 finally:
-    (root.parent/"operations-qa.json").write_text(json.dumps(results,ensure_ascii=False,indent=2),encoding="utf-8")
+    (root.parent/"operations-v020.json").write_text(json.dumps(results,ensure_ascii=False,indent=2),encoding="utf-8")
     c.close()

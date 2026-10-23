@@ -22,6 +22,24 @@ namespace PagePilot {
    if(name=="pagepilot_context")return host.Context();
    // Bind mutations to the explicit full name returned by context.
    if(S(a,"document")!=(string)doc.FullName)throw new Exception("活动文档与请求不一致，请重新读取上下文。");
+   if(name=="pagepilot_inspect_objects"){
+    var fields=new List<object>();foreach(dynamic field in doc.Fields)fields.Add(new{code=(string)field.Code.Text,result=(string)field.Result.Text});
+    var controls=new List<object>();foreach(dynamic c in doc.ContentControls)controls.Add(new{id=(string)c.ID,title=(string)c.Title,tag=(string)c.Tag,text=(string)c.Range.Text});
+    var bookmarks=new List<string>();foreach(dynamic b in doc.Bookmarks)bookmarks.Add((string)b.Name);
+    return new{fields,contentControls=controls,bookmarks,footnotes=(int)doc.Footnotes.Count,endnotes=(int)doc.Endnotes.Count,tablesOfContents=(int)doc.TablesOfContents.Count,sections=(int)doc.Sections.Count};
+   }
+   if(name=="pagepilot_edit_objects"){
+    string operation=S(a,"operation");int paragraph=I(a,"paragraph",1);if(paragraph<1||paragraph>(int)doc.Paragraphs.Count)throw new Exception("段落索引无效");
+    var supported=new[]{"add_footnote","add_endnote","add_toc","update_fields","add_content_control","set_content_control"};if(!supported.Contains(operation))throw new Exception("不支持的操作");
+    Backup(doc);dynamic range=doc.Paragraphs[paragraph].Range;range.Collapse(1);string text=S(a,"text");
+    if(operation=="add_footnote")doc.Footnotes.Add(range,Text:text);
+    if(operation=="add_endnote")doc.Endnotes.Add(range,Text:text);
+    if(operation=="add_toc")doc.TablesOfContents.Add(range,UseHeadingStyles:true,UpperHeadingLevel:1,LowerHeadingLevel:9,UseOutlineLevels:true);
+    if(operation=="update_fields"){int errors=(int)doc.Fields.Update();foreach(dynamic toc in doc.TablesOfContents)toc.Update();return new{updated=true,firstFieldError=errors};}
+    if(operation=="add_content_control"){dynamic c=doc.ContentControls.Add(0,range);c.Title=S(a,"title","PagePilot");c.Range.Text=text;return new{created=true,id=(string)c.ID};}
+    if(operation=="set_content_control"){bool found=false;foreach(dynamic c in doc.ContentControls)if((string)c.ID==S(a,"control_id")){c.Range.Text=text;found=true;break;}if(!found)throw new Exception("未找到内容控件 ID");}
+    return new{applied=true,operation};
+   }
    if(name=="pagepilot_normalize_ascii")return Ascii(doc);
    if(name=="pagepilot_normalize_tables")return Tables(doc,F(a,"margin_points",4));
    if(name=="pagepilot_insert_caption"){

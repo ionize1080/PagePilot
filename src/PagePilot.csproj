@@ -2,7 +2,7 @@
   <PropertyGroup>
     <TargetFramework>net48</TargetFramework><UseWindowsForms>true</UseWindowsForms>
     <LangVersion>latest</LangVersion><AssemblyName>PagePilot</AssemblyName>
-    <Version>0.1.0</Version><GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+    <Version>0.2.0</Version><GenerateAssemblyInfo>true</GenerateAssemblyInfo>
     <Platforms>AnyCPU</Platforms>
   </PropertyGroup>
   <ItemGroup>

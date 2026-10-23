@@ -6,6 +6,7 @@ $assembly=[Reflection.AssemblyName]::GetAssemblyName($dll).FullName
 $codebase=([Uri]$dll).AbsoluteUri
 $entries=@(
  @{Id='{0E057EBB-B35B-4A31-9B65-3DF44E8034CE}';Class='PagePilot.Connect'},
+ @{Id='{246818DC-B9A5-4328-9E71-69575A825B92}';Class='PagePilot.AiPane'},
  @{Id='{79CEEFC8-67F4-4F55-9475-24C0681BFBBD}';Class='PagePilot.Pane'}
 )
 foreach($view in @([Microsoft.Win32.RegistryView]::Registry32,[Microsoft.Win32.RegistryView]::Registry64)) {
@@ -19,7 +20,7 @@ foreach($view in @([Microsoft.Win32.RegistryView]::Registry32,[Microsoft.Win32.R
    $key.SetValue('Assembly',$assembly);$key.SetValue('RuntimeVersion','v4.0.30319');$key.SetValue('CodeBase',$codebase);$key.Dispose()
    $key=$user.CreateSubKey($base+'\ProgId');$key.SetValue('',$entry.Class);$key.Dispose()
    $key=$user.CreateSubKey('Software\Classes\'+$entry.Class+'\CLSID');$key.SetValue('',$entry.Id);$key.Dispose()
-   if($entry.Class -eq 'PagePilot.Pane') {
+   if($entry.Class -in @('PagePilot.Pane','PagePilot.AiPane')) {
     $user.CreateSubKey($base+'\Control').Dispose()
     $user.CreateSubKey($base+'\Implemented Categories\{40FC6ED4-2438-11CF-A3DB-080036F12502}').Dispose()
    }

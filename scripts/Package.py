@@ -16,7 +16,7 @@ def put_tree(z,folder,prefix):
     for p in sorted(folder.rglob('*')):
         if p.is_file() and not any(x in skip for x in p.relative_to(folder).parts):
             z.write(p,str(Path(prefix)/p.relative_to(folder)))
-portable=out/'PagePilot-0.1.0-portable-win-x64.zip'
+portable=out/'PagePilot-0.2.0-portable-win-x64.zip'
 with zipfile.ZipFile(portable,'w',zipfile.ZIP_DEFLATED,compresslevel=6) as z:
     for name in ['PagePilot.dll','Python','Browser','Chatbox','bridge','vendor']:
         p=repo/'dist'/name
@@ -31,7 +31,7 @@ with zipfile.ZipFile(portable,'w',zipfile.ZIP_DEFLATED,compresslevel=6) as z:
         put_tree(z,repo/name,'PagePilot/'+name)
     for name in ['README.md','LICENSE','THIRD-PARTY-NOTICES.md','Enable.cmd','Disable.cmd','requirements-lock.txt']:
         z.write(repo/name,'PagePilot/'+name)
-source=out/'PagePilot-0.1.0-source.zip'
+source=out/'PagePilot-0.2.0-source.zip'
 with zipfile.ZipFile(source,'w',zipfile.ZIP_DEFLATED,compresslevel=6) as z:
     for name in ['src','bridge','chatbox','vendor','scripts','tests','docs']:
         put_tree(z,repo/name,'PagePilot/'+name)
@@ -43,4 +43,4 @@ for p in [portable,source]:
     digest=hashlib.file_digest(p.open('rb'),'sha256').hexdigest()
     hashes.append(digest+'  '+p.name)
     print(p.name,p.stat().st_size,digest)
-(out/'SHA256SUMS.txt').write_text('\n'.join(hashes)+'\n',encoding='ascii')
+(out/'PagePilot-0.2.0-SHA256SUMS.txt').write_text('\n'.join(hashes)+'\n',encoding='ascii')

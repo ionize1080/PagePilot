@@ -3997,5 +3997,72 @@
     },
     "readOnly": false,
     "source": "PagePilot"
+  },
+  {
+    "name": "pagepilot_capabilities",
+    "description": "Read FIRST. Exact tool availability and workflow for this Word version and active document; includes unsupported modern APIs and file/live restrictions.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {},
+      "type": "object"
+    },
+    "readOnly": true,
+    "source": "PagePilot"
+  },
+  {
+    "name": "pagepilot_inspect_objects",
+    "description": "Inspect live Word fields, bookmarks, content controls, footnote/endnote/TOC counts. Word 2010+.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "document": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "document"
+      ],
+      "type": "object"
+    },
+    "readOnly": true,
+    "source": "PagePilot"
+  },
+  {
+    "name": "pagepilot_edit_objects",
+    "description": "Fill gaps in upstream live editing. operation: add_footnote, add_endnote, add_toc, update_fields, add_content_control, set_content_control. paragraph is 1-based insertion point; set_content_control uses inspected control_id. Word 2010+. Backup and AI approval apply.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "document": {
+          "type": "string"
+        },
+        "operation": {
+          "type": "string"
+        },
+        "paragraph": {
+          "default": 1,
+          "type": "integer"
+        },
+        "text": {
+          "default": "",
+          "type": "string"
+        },
+        "title": {
+          "default": "PagePilot",
+          "type": "string"
+        },
+        "control_id": {
+          "default": "",
+          "type": "string"
+        }
+      },
+      "required": [
+        "document",
+        "operation"
+      ],
+      "type": "object"
+    },
+    "readOnly": false,
+    "source": "PagePilot"
   }
 ]

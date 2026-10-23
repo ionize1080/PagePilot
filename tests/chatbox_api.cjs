@@ -1,0 +1,22 @@
+// Test-only staging injection, real Chatbox UI/IPC/API; no debugger or HTTP server.
+const {BrowserWindow}=require('electron'),fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
+const folder=process.env.PAGEPILOT_QA_OUTPUT;fs.mkdirSync(folder,{recursive:true});
+const log=text=>fs.appendFileSync(path.join(folder,'api-ui.log'),text+'\n');const wait=ms=>new Promise(r=>setTimeout(r,ms));
+const until=async(fn,label)=>{for(let i=0;i<180;i++){if(await fn())return;await wait(1000);}throw Error(label);};
+(async()=>{let w;await until(async()=>{w=BrowserWindow.getAllWindows()[0];return w&&!w.webContents.isLoading();},'Window');const js=code=>w.webContents.executeJavaScript(code,true);
+ w.webContents.send('navigate-to','/');await wait(1500);await until(()=>js('!!document.querySelector("#message-input")'),'Input');
+ const prompt='QA020：请先查询当前 Word 能力和文档，指出 100 到 120 却写增长 10% 的错误。不要修改文档。';
+ await js("(()=>{const t=document.querySelector('#message-input');t.focus();t.select();})()");await w.webContents.insertText(prompt);await wait(600);
+ assert.equal(await js('document.querySelector("#message-input").value'),prompt);
+ w.webContents.sendInputEvent({type:'keyDown',keyCode:'Enter'});w.webContents.sendInputEvent({type:'keyUp',keyCode:'Enter'});
+ await until(()=>js(`document.querySelector('#message-input').value===''&&document.body.innerText.includes(${JSON.stringify(prompt)})`),'Exact sent prompt');log('PASS exact requested prompt sent');
+ await until(()=>js('document.body.innerText.includes("20%")&&document.body.innerText.includes("pagepilot_capabilities")&&document.body.innerText.includes("pagepilot_context")'),'Real API tool result');
+ fs.writeFileSync(path.join(folder,'real-api.png'),(await w.webContents.capturePage()).toPNG());log('PASS real Chatbox numerical audit');
+ fs.writeFileSync(path.join(folder,'navigation-ready'),'ready');
+ await until(()=>js('document.querySelector("#message-input")?.value.startsWith("分析当前 Word 文档结构。要求：")'),'Navigation button prompt');await wait(600);
+ const content=await js('document.querySelector("#message-input").value');assert(content.includes('大标题'));log('PASS native navigation requirement transferred to real composer');
+ w.webContents.sendInputEvent({type:'keyDown',keyCode:'Enter'});w.webContents.sendInputEvent({type:'keyUp',keyCode:'Enter'});
+ await until(()=>js(`document.querySelector('#message-input').value===''&&document.body.innerText.includes(${JSON.stringify(content)})`),'Exact navigation prompt sent');log('PASS exact personalized navigation request sent');
+ await until(()=>js('document.body.innerText.includes("pagepilot_set_navigation")'),'AI navigation');await wait(3000);
+ fs.writeFileSync(path.join(folder,'navigation-ai.png'),(await w.webContents.capturePage()).toPNG());log('PASS AI navigation tool returned');
+})().catch(e=>log('FAIL '+e.stack));

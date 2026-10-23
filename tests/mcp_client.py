@@ -19,7 +19,7 @@ class Client:
         threading.Thread(target=lambda: [self.queue.put(line) for line in self.proc.stdout], daemon=True).start()
         threading.Thread(target=lambda: [self.errors.append(line) for line in self.proc.stderr], daemon=True).start()
         self.sequence = 0
-        self.request("initialize", {"protocolVersion": "2025-03-26", "capabilities": {}, "clientInfo": {"name": "PagePilot QA", "version": "0.1.0"}})
+        self.request("initialize", {"protocolVersion": "2025-03-26", "capabilities": {}, "clientInfo": {"name": "PagePilot QA", "version": "0.2.0"}})
         self.proc.stdin.write(json.dumps({"jsonrpc":"2.0", "method":"notifications/initialized"})+"\n")
         self.proc.stdin.flush()
 

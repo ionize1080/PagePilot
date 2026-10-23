@@ -10,3 +10,5 @@ PagePilot is distributed under GPL-3.0. This distribution includes the following
 * Microsoft Office interop metadata is embedded from the Office 2010 PIAs and Extensibility reference assembly. Office itself and the .NET Framework are not bundled. Microsoft Word must be separately licensed.
 
 Upstream downloads: https://github.com/chatboxai/chatbox/releases/tag/v1.20.3 , https://github.com/ykarapazar/word-mcp-live , https://www.python.org/downloads/release/python-31210/ , https://github.com/electron/electron/releases/tag/v44.7.0 .
+
+* **GridPilot** (ionize1080/GridPilot): the icon drawing approach, owned Electron window docking and composer approval interaction were adapted from the user-requested reference project. PagePilot supplies its own document/search/bookmark/gear artwork and Word integration.

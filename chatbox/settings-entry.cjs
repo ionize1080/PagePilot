@@ -1,0 +1,7 @@
+const {app,BrowserWindow,ipcMain,screen}=require('electron');
+const path=require('node:path'),host=require('./host.cjs');
+app.setPath('userData',path.join(app.getPath('appData'),'PagePilot','Settings'));let win;
+app.whenReady().then(()=>{const a=screen.getDisplayNearestPoint(screen.getCursorScreenPoint()).workArea;win=new BrowserWindow({title:'PagePilot · 设置',width:Math.min(880,a.width-40),height:Math.min(720,a.height-40),minWidth:600,minHeight:480,autoHideMenuBar:true,backgroundColor:'#f6f8fa',webPreferences:{preload:path.join(__dirname,'settings-preload.cjs'),sandbox:true,contextIsolation:true,nodeIntegration:false}});win.webContents.on('will-navigate',e=>e.preventDefault());win.webContents.setWindowOpenHandler(()=>({action:'deny'}));win.loadFile(path.join(__dirname,'settings.html'));});
+ipcMain.handle('pagepilot:settings',async(e,action,args)=>{if(!win||e.sender!==win.webContents||e.senderFrame!==win.webContents.mainFrame)throw Error('Invalid sender');if(action==='read')return host('settings_read');if(action==='provider')return host('settings_provider');if(action==='write'){if(typeof args?.headingRules!=='string'||args.headingRules.length>64000)throw Error('Invalid settings');return host('settings_write',args);}throw Error('Invalid action');});
+app.on('window-all-closed',()=>app.quit());
+const timer=setInterval(()=>host('ping',{role:'settings'}).catch(()=>app.quit()),10000);timer.unref();
