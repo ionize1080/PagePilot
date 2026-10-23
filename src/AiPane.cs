@@ -51,7 +51,7 @@ namespace PagePilot
             child=window;originalStyle=GetWindowLong(child,-16);originalExtendedStyle=GetWindowLong(child,-20);
             GetWindowRect(child,out floatingBounds);
             // Keep Chromium as an owned top-level HWND. SetParent/WS_CHILD lets
-            // Excel's accelerator loop consume text before Chromium receives it.
+            // Word's accelerator loop consume text before Chromium receives it.
             owner=GetAncestor(Handle,2);Owner(child,owner);
             SetWindowLong(child,-16,(originalStyle & ~0x00C40000 & ~0x40000000)|unchecked((int)0x80000000));
             SetWindowLong(child,-20,originalExtendedStyle & ~0x00000301);SetFrame(child,true);
@@ -74,7 +74,7 @@ namespace PagePilot
             var bounds=RectangleToScreen(ClientRectangle);
             if(bounds.Width<20||bounds.Height<20){ShowWindow(child,0);return;}
             if(bounds!=lastBounds){
-                // Excel 2010/Win10 can retain invisible resize/non-client margins
+                // Word 2010/Win10 can retain invisible resize/non-client margins
                 // after Electron changes the frame. Align the CLIENT area, then clip
                 // those margins; do not assume outer HWND bounds equal web content.
                 GetWindowRect(child,out var outer);GetClientRect(child,out var client);

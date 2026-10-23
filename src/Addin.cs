@@ -30,9 +30,9 @@ namespace PagePilot {
   private readonly Dictionary<string,Office.CustomTaskPane> panes=new Dictionary<string,Office.CustomTaskPane>();
   private bool pendingAI,pendingProvider;private string pendingPrompt;
   private Process settingsProcess;private Office.IRibbonUI ribbon;private Office.CustomTaskPane aiPane;private AiPane aiControl;private IntPtr aiHandle;
-  private int aiOwner;internal int Theme=0,NavigationGap=36;internal string AiMode="window";private string approvalDocument;
+  private long aiOwner;internal int Theme=0,NavigationGap=36;internal string AiMode="window";private object approvalDocument;private bool approvalPending;private long stateRevision;
   public void RibbonLoaded(Office.IRibbonUI value){ribbon=value;}
-  public object RibbonImage(Office.IRibbonControl control){IntPtr window=IntPtr.Zero;try{window=(IntPtr)(int)App.ActiveWindow.Hwnd;}catch{}return RibbonIcons.Picture(control.Id,window,Theme);}
+  public object RibbonImage(Office.IRibbonControl control){IntPtr window=IntPtr.Zero;try{window=WordWindows.Handle(App.ActiveWindow);}catch{}return RibbonIcons.Picture(control.Id,window,Theme);}
   private void LoadPreferences(){try{var p=Json().Deserialize<Dictionary<string,object>>(File.ReadAllText(Path.Combine(Data,"preferences.json")));Theme=Convert.ToInt32(p["theme"]);NavigationGap=Convert.ToInt32(p["navigationGap"]);AiMode=Convert.ToString(p["aiMode"]);}catch{}}
   private void SavePreferences(){Directory.CreateDirectory(Data);File.WriteAllText(Path.Combine(Data,"preferences.json"),Json().Serialize(new{theme=Theme,navigationGap=NavigationGap,aiMode=AiMode}));}
   internal void QueuePrompt(string text){pendingPrompt=text;LaunchChat();}
@@ -40,13 +40,13 @@ namespace PagePilot {
    if(mode!="sidebar"&&mode!="window")throw new Exception("无效显示模式");
    AiMode=mode;SavePreferences();if(aiHandle==IntPtr.Zero)return;
    if(mode=="sidebar"){
-    if(App.Documents.Count==0)throw new Exception("请先打开文档");int hwnd=(int)App.ActiveWindow.Hwnd;
+    if(App.Documents.Count==0)throw new Exception("请先打开文档");long hwnd=WordWindows.Handle(App.ActiveWindow).ToInt64();
     if(aiPane!=null&&aiOwner!=hwnd){aiControl.Detach();aiPane.Delete();aiPane=null;}
-    if(aiPane==null){aiPane=factory.CreateCTP("PagePilot.AiPane","PagePilot · AI 助手",App.ActiveWindow);aiPane.DockPosition=Office.MsoCTPDockPosition.msoCTPDockPositionRight;aiPane.Width=(int)(480*Native.Dpi((IntPtr)hwnd));aiControl=(AiPane)aiPane.ContentControl;aiOwner=hwnd;}
+    if(aiPane==null){aiPane=factory.CreateCTP("PagePilot.AiPane","PagePilot · AI 助手",App.ActiveWindow);aiPane.DockPosition=Office.MsoCTPDockPosition.msoCTPDockPositionRight;aiPane.Width=(int)(480*WordWindows.Dpi((IntPtr)hwnd));aiControl=(AiPane)aiPane.ContentControl;aiOwner=hwnd;}
     aiPane.Visible=true;aiControl.Attach(aiHandle);
    }else if(aiPane!=null){aiControl.Detach();aiPane.Visible=false;}
   }
-  private object ApprovalState(){string current=App.Documents.Count==0?"":(string)App.ActiveDocument.FullName;if(approvalDocument!=current)AutoApprove=false;return new{automatic=AutoApprove,mode=AiMode};}
+  private object ApprovalState(){object current=App.Documents.Count==0?null:(object)App.ActiveDocument;if(!object.Equals(approvalDocument,current))AutoApprove=false;return new{automatic=AutoApprove,mode=AiMode,revision=++stateRevision};}
   private NamedPipeServerStream listener;
   private volatile bool stopping;
   private Process chat;
@@ -69,17 +69,18 @@ namespace PagePilot {
   public void OpenRegex(Office.IRibbonControl c){ShowPane(0);}
   public void OpenNavigation(Office.IRibbonControl c){ShowPane(1);}
   public void OpenSettings(Office.IRibbonControl c){if(Dispatcher.InvokeRequired){Dispatcher.Invoke(new Action(()=>OpenSettings(c)));return;}try{if(settingsProcess!=null&&!settingsProcess.HasExited){Native.SetForegroundWindow(settingsProcess.MainWindowHandle);return;}settingsProcess=StartElectron("settings-entry.cjs");}catch(Exception e){MessageBox.Show(e.Message,"PagePilot");}}
-  internal void SetNavigation(List<Heading> headings){var pane=panes[(int)App.ActiveWindow.Hwnd+":1"];((Pane)pane.ContentControl).SetOutline(headings);}
+  internal void SetNavigation(List<Heading> headings){var pane=panes[WordWindows.Handle(App.ActiveWindow).ToInt64()+":1"];((Pane)pane.ContentControl).SetOutline(headings);}
   public string GetMcpSession(){return Json().Serialize(new{pipe=PipeName,token=Token});}
   public void ShowPane(int page){if(Dispatcher.InvokeRequired){Dispatcher.Invoke(new Action(()=>ShowPane(page)));return;}try{
    if(page==2){OpenSettings(null);return;}
    Log("ShowPane "+page);
    if(App.Documents.Count==0)throw new InvalidOperationException("请先打开文档。");
-   int hwnd=(int)App.ActiveWindow.Hwnd;string key=hwnd+":"+page;
+   long hwnd=WordWindows.Handle(App.ActiveWindow).ToInt64();string key=hwnd+":"+page;
+   foreach(var stale in panes.Keys.Where(k=>!WordWindows.IsWindow(new IntPtr(long.Parse(k.Split(':')[0])))).ToArray()){try{panes[stale].Delete();}catch{}panes.Remove(stale);}
    if(!panes.TryGetValue(key,out var pane)){
     if(factory==null)throw new InvalidOperationException("Word 尚未初始化任务窗格，请重新启动 Word。");
     pane=factory.CreateCTP("PagePilot.Pane",page==0?"PagePilot · 正则替换":"PagePilot · 自动导航",App.ActiveWindow);Log("Created pane");
-    pane.DockPosition=Office.MsoCTPDockPosition.msoCTPDockPositionRight;pane.Width=(int)(370*Native.Dpi((IntPtr)hwnd));panes[key]=pane;
+    pane.DockPosition=Office.MsoCTPDockPosition.msoCTPDockPositionRight;pane.Width=(int)(370*WordWindows.Dpi((IntPtr)hwnd));panes[key]=pane;
     ((Pane)pane.ContentControl).Bind(this,App.ActiveDocument,page);Log("Bound pane");
    }
    ((Pane)pane.ContentControl).SelectPage(page);pane.Visible=true;
@@ -117,7 +118,10 @@ namespace PagePilot {
   private static bool FixedEquals(string a,string b){if(a==null||b==null||a.Length!=b.Length)return false;int d=0;for(int i=0;i<a.Length;i++)d|=a[i]^b[i];return d==0;}
   internal object Handle(Dictionary<string,object> req){
    string action=Convert.ToString(req["action"]);
-   if(action=="context")return Context();
+   if(action=="context")return Context(req.ContainsKey("start")?Convert.ToInt32(req["start"]):1,req.ContainsKey("count")?Convert.ToInt32(req["count"]):10000);
+   if(action=="fingerprint")return Fingerprint();
+   if(action=="binding")return App.Documents.Count==0?new{document=(object)null}:new{document=(object)new{path=(string)App.ActiveDocument.FullName}};
+   if(action=="window_handle"){string target=req.ContainsKey("document")?Convert.ToString(req["document"]):null;if(target!=null&&!string.Equals(target,(string)App.ActiveDocument.FullName,StringComparison.OrdinalIgnoreCase))throw new Exception("活动文档已变化");return new{hwnd=WordWindows.Handle(App.ActiveWindow).ToInt64(),processId=Process.GetCurrentProcess().Id};}
    if(action=="approve"){
     string name=Convert.ToString(req["name"]),args=Convert.ToString(req["arguments"]);
     ApprovalState();bool allowed=AutoApprove||Approval(name,args);
@@ -126,15 +130,16 @@ namespace PagePilot {
    if(action=="ping"){
     bool forAI=req.ContainsKey("role")&&Convert.ToString(req["role"])=="ai";bool activate=forAI&&pendingAI,provider=forAI&&pendingProvider;string prompt=forAI?pendingPrompt:null;
     if(forAI){pendingAI=false;pendingProvider=false;pendingPrompt=null;}
-    return new{version="0.2.0",activate,provider,prompt,state=ApprovalState()};
+    return new{version="0.3.0",activate,provider,prompt,state=ApprovalState()};
    }
    if(action=="ai_ready"){aiHandle=new IntPtr(Convert.ToInt64(req["handle"]));SetAiMode(AiMode);return ApprovalState();}
    if(action=="ai_mode"){SetAiMode(Convert.ToString(req["mode"]));return ApprovalState();}
    if(action=="ai_approval"){
     bool enabled=Convert.ToBoolean(req["enabled"]);ApprovalState();
     if(enabled&&!AutoApprove){if(App.Documents.Count==0)throw new Exception("请先打开文档");
-     if(!ConfirmAutomatic())return ApprovalState();
-     approvalDocument=(string)App.ActiveDocument.FullName;
+     if(approvalPending)return ApprovalState();
+     approvalPending=true;try{if(!ConfirmAutomatic())return ApprovalState();}finally{approvalPending=false;}
+     approvalDocument=(object)App.ActiveDocument;
     }AutoApprove=enabled;return ApprovalState();
    }
    if(action=="settings_provider"){pendingProvider=true;LaunchChat();return new{opened=true};}
@@ -160,22 +165,30 @@ namespace PagePilot {
    throw new Exception("Unknown action");
   }
   internal static string ReadRulesText(){string file=Path.Combine(Data,"heading-rules.txt");return File.Exists(file)?File.ReadAllText(file):"";}
-  internal object Context(){
+  private object fingerprintDocument;private string fingerprintId;
+  private object Fingerprint(){
+   if(App.Documents.Count==0)return new{document=(object)null};
+   dynamic d=App.ActiveDocument;if(!object.Equals(fingerprintDocument,(object)d)){fingerprintDocument=(object)d;fingerprintId=Guid.NewGuid().ToString("N");}
+   string hash;using(var sha=SHA256.Create())hash=Convert.ToBase64String(sha.ComputeHash(Encoding.UTF8.GetBytes((string)d.Content.Text)));
+   return new{document=new{path=(string)d.FullName,id=fingerprintId,hash,window=WordWindows.Handle(App.ActiveWindow).ToInt64(),selection=new{start=(int)App.Selection.Start,end=(int)App.Selection.End}}};
+  }
+  internal object Context(int start=1,int count=10000){
    if(App.Documents.Count==0)return new{document=(object)null};
    dynamic d=App.ActiveDocument;var paragraphs=new List<object>();
-   for(int i=1;i<=Math.Min((int)d.Paragraphs.Count,10000);i++){dynamic p=d.Paragraphs[i];paragraphs.Add(new{index=i,start=(int)p.Range.Start,end=(int)p.Range.End,text=(string)p.Range.Text,level=(int)p.OutlineLevel});}
-   return new{document=new{name=(string)d.Name,path=(string)d.FullName,saved=(bool)d.Saved,paragraphs,selection=new{start=(int)App.Selection.Start,end=(int)App.Selection.End},truncated=(int)d.Paragraphs.Count>10000}};
+   if(start<1||count<1||count>10000)throw new Exception("start 必须大于 0，count 必须为 1–10000");
+   int i=0;foreach(dynamic p in d.Paragraphs){i++;if(i<start)continue;if(i>=start+count)break;dynamic r=p.Range;paragraphs.Add(new{index=i,start=(int)r.Start,end=(int)r.End,text=(string)r.Text,level=(int)p.OutlineLevel});}
+   return new{document=new{name=(string)d.Name,path=(string)d.FullName,saved=(bool)d.Saved,paragraphs,selection=new{start=(int)App.Selection.Start,end=(int)App.Selection.End},totalParagraphs=(int)d.Paragraphs.Count,nextStart=start+paragraphs.Count,truncated=start+paragraphs.Count<=(int)d.Paragraphs.Count}};
   }
-  private bool ConfirmAutomatic(){float dpi=Native.Dpi((IntPtr)(int)App.ActiveWindow.Hwnd);using(var form=new Form{Text="PagePilot · 确认自动批准",Width=(int)(560*dpi),Height=(int)(290*dpi),Font=new System.Drawing.Font("Microsoft YaHei UI",10),StartPosition=FormStartPosition.CenterScreen,TopMost=true,FormBorderStyle=FormBorderStyle.FixedDialog,MaximizeBox=false,MinimizeBox=false}){
+  private bool ConfirmAutomatic(){float dpi=WordWindows.Dpi(WordWindows.Handle(App.ActiveWindow));using(var form=new Form{Text="PagePilot · 确认自动批准",Width=(int)(560*dpi),Height=(int)(290*dpi),Font=new System.Drawing.Font("Microsoft YaHei UI",10),StartPosition=FormStartPosition.CenterParent,FormBorderStyle=FormBorderStyle.FixedDialog,MaximizeBox=false,MinimizeBox=false}){
    form.Controls.Add(new Label{Dock=DockStyle.Fill,Padding=new Padding((int)(24*dpi)),Text="启用后，AI 可直接修改当前文档的文字、格式、表格和结构，无需逐项批准。操作前会保存备份。\n\n仅对当前文档、本次 Word 会话有效。切换文档或重启会恢复手动批准。\n\n确认启用自动批准？"});
    var bar=new FlowLayoutPanel{Dock=DockStyle.Bottom,Height=(int)(56*dpi),Padding=new Padding((int)(8*dpi)),FlowDirection=FlowDirection.RightToLeft};
-   var yes=new Button{Text="启用自动批准",DialogResult=DialogResult.Yes,Width=(int)(140*dpi),Height=(int)(32*dpi)};var no=new Button{Text="保持手动",DialogResult=DialogResult.No,Width=(int)(110*dpi),Height=(int)(32*dpi)};bar.Controls.Add(yes);bar.Controls.Add(no);form.Controls.Add(bar);form.AcceptButton=no;form.CancelButton=no;form.Shown+=(s,e)=>no.Focus();return form.ShowDialog()==DialogResult.Yes;
+   var yes=new Button{Text="启用自动批准",DialogResult=DialogResult.Yes,Width=(int)(140*dpi),Height=(int)(32*dpi)};var no=new Button{Text="保持手动",DialogResult=DialogResult.No,Width=(int)(110*dpi),Height=(int)(32*dpi)};bar.Controls.Add(yes);bar.Controls.Add(no);form.Controls.Add(bar);form.AcceptButton=no;form.CancelButton=no;form.Shown+=(s,e)=>{Native.SetForegroundWindow(form.Handle);no.Focus();};return form.ShowDialog(new Win32Owner(WordWindows.Handle(App.ActiveWindow)))==DialogResult.Yes;
   }}
-  internal bool Approval(string name,string args){float dpi=Native.Dpi((IntPtr)(int)App.ActiveWindow.Hwnd);using(var form=new Form{Text="PagePilot · 批准文档操作",Width=(int)(640*dpi),Height=(int)(480*dpi),Font=new System.Drawing.Font("Microsoft YaHei UI",9),StartPosition=FormStartPosition.CenterScreen,TopMost=true}){
+  internal bool Approval(string name,string args){float dpi=WordWindows.Dpi(WordWindows.Handle(App.ActiveWindow));using(var form=new Form{Text="PagePilot · 批准文档操作",Width=(int)(640*dpi),Height=(int)(480*dpi),Font=new System.Drawing.Font("Microsoft YaHei UI",9),StartPosition=FormStartPosition.CenterParent}){
    form.Controls.Add(new TextBox{Dock=DockStyle.Fill,Multiline=true,ReadOnly=true,ScrollBars=ScrollBars.Both,Text=name+Environment.NewLine+args});
    var bar=new FlowLayoutPanel{Dock=DockStyle.Bottom,Height=(int)(46*dpi),FlowDirection=FlowDirection.RightToLeft};
-   var yes=new Button{Text="批准此次操作",Width=(int)(140*dpi),Height=(int)(32*dpi),DialogResult=DialogResult.OK};var no=new Button{Text="拒绝",Width=(int)(90*dpi),Height=(int)(32*dpi),DialogResult=DialogResult.Cancel};bar.Controls.Add(yes);bar.Controls.Add(no);form.Controls.Add(bar);form.CancelButton=no;
-   return form.ShowDialog()==DialogResult.OK;
+   var yes=new Button{Text="批准此次操作",Width=(int)(140*dpi),Height=(int)(32*dpi),DialogResult=DialogResult.OK};var no=new Button{Text="拒绝",Width=(int)(90*dpi),Height=(int)(32*dpi),DialogResult=DialogResult.Cancel};bar.Controls.Add(yes);bar.Controls.Add(no);form.Controls.Add(bar);form.CancelButton=no;form.Shown+=(s,e)=>Native.SetForegroundWindow(form.Handle);
+   return form.ShowDialog(new Win32Owner(WordWindows.Handle(App.ActiveWindow)))==DialogResult.OK;
   }}
  }
  internal static class Native{

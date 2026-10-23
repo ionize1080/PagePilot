@@ -1,33 +1,37 @@
-# PagePilot 0.2.0 validation
+# PagePilot 0.3.0 validation — 2026-10-23
 
-Date: 2026-10-23. Actual host: Windows build 26300, Word 16.0.20430.20180 x64, .NET Framework 4.8, Office 2010 PIA; Chatbox 1.20.3 / Electron 44.7.0 / embedded Python 3.12.10.
+Test host: physical Windows build 26300, Word 16 x64, Office14 PIA, .NET Framework 4.8.
+The user explicitly excluded the VM from this test run. Word 2010 x86/x64 has not been executed; fallback code and Office14 compilation are not target-machine certification.
 
-**Win10 21H1 + Word 2010 x86/x64 remains untested. No target VM/machine is available.** Simulated Word 14 metadata tests do not establish target compatibility.
+## Executed
 
-## Verified in this update
-
-- Core engine: 11 assertions passed (headings, paragraph anchors, regex groups/offsets, boundaries, timeout).
-- Capability matrix: Word 14 and 16; no document; protected document. All 120 upstream tools retained; 129 total schemas. Word 14 comment reply/resolve unavailable, signature metadata limited.
-- Actual stdio discovery, host context and live Word text returned; new object tools verified by COM readback: footnote, endnote, rich-text content control insertion/replacement, TOC insertion/update, field update. Invalid operation rejected.
-- Real DeepSeek API: capability/context inspection, numerical audit (100 to 120 is 20%, not 10%), Times New Roman 10.5 normalization and top-level-only navigation. API key read only from the supplied external file, not logged or packaged.
-- Native Chatbox UI: exact requested audit prompt sent and capability/context calls returned; real API response identified 20%. Native navigation textarea requirements transferred to the actual React composer; exact personalized prompt sent, AI called navigation tool. COM confirmed unchanged document text/outline levels.
-- Native AI window: six dock/undock transitions, retained Chinese draft and editable input. Docked window controls hidden; top/composer mode buttons present. No SetParent/child-window embedding.
-- Automatic approval: cancel stays manual, explicit confirmation enables red lightning, disable restores manual. Default confirmation action is keep manual. Fixed confirmation timeout, busy-state and foreground visibility problems found in QA.
-- Independent settings: all three palette selections and 72 px reading whitespace persisted; standalone settings process had only its settings window. Added actual four-icon previews. WPF accent and gear follow palette.
-- Navigation: hierarchy displayed as a collapsible tree; single click collapses selection and positions heading near top, body visible below; repeated selected-heading click works. Page boundaries limit exact pixel positioning.
-- Actual WPF regex UI replaced exactly 18 capture-group matches without approval. Manual outline button directly applied 1/2/1 levels; backups retained.
-- Re-executed 20-operation stdio regression: font, spacing, page margins, table creation/normalization/cell edits, comments, headers/footers, page numbers, hierarchy, revisions, paragraph inspection, diagnostics, PDF and save; actual Word state asserted.
-- Switching to a new document resets automatic approval; returning does not re-enable it. Manual denial of a stdio insert leaves DENIED_SENTINEL absent in actual Word.
-- Final normal-runtime process snapshot: 7 related Word/Electron/Python processes, 0 listening TCP sockets. Restarting Word and opening settings displayed only the settings Electron window, no Chatbox.
+- Release build passed. NU1900: vulnerability feed was unavailable; this is not a successful dependency vulnerability audit.
+- Core engine: 17 assertions, including 100,001 matches, regex timeout, boundaries, hierarchy false positives and trailing dot depth.
+- Actual DeepSeek model from the existing Chatbox configuration: inline navigation produced exactly the requested first-level headings at paragraph indices 1 and 5. No additional assistant window was launched. Cancel completed without applying results.
+- Document XML equality passed with automatic proofing excluded from the fixture (Word independently splits runs during grammar checking).
+- Actual Word regex: debounced search, single-click selection, capture/replacement, full batch undo, hyperlink-aware position mapping.
+- Complex Word fixture: nested TOC/PAGEREF fields, footnotes, endnotes and content controls. Seven matches map to exact visible character ranges without field delimiters. Visible geometry and unchanged text verified.
+- Actual on-screen review: yellow highlights on QA, amounts, dates and page-number results. Overlay does not alter formatting, save state or undo history.
+- Chatbox UI: six dock/window transitions retained editable Chinese drafts; top-only visible mode switch; aligned input toolbar; closing approval confirmation preserved manual mode; confirmation enabled red state; disabling restored manual.
+- Real Chatbox API numerical review returned 20% for 100 to 120. API keys remained in the existing user profile and were not logged or packaged.
+- 20-operation actual stdio MCP regression: formatting, spacing, page setup, tables/cells, comments, headers/footers, page numbers, hierarchy, revisions, diagnostics, PDF and save. COM readback assertions passed.
+- Object regression: footnote/endnote, content control insertion and update, TOC and field update, invalid operation rejection.
+- Additional regression: context paging, bound screenshot, ASCII NameAscii assignment preserving 13 pt size, numbering-template reuse.
+- Final approval regression: closing confirmation and reentrant requests stayed manual; explicit enable succeeded; switching documents reset approval permanently for that session.
+- Capability matrix: 129 total tools including all 120 upstream tools, simulated Word 14/16 and protected/no-document states.
+- JavaScript syntax, Python compilation and git whitespace checks.
 
 ## Reproduce
 
-`tests/CoreTests.cs`, `tests/capabilities.py`, `tests/live_smoke.py`, `tests/objects_live.py`, `tests/deepseek_live.py <key-file>`, `tests/operations.py`.
+Build with build.ps1, then build tests/PhysicalIntegration.csproj. Copy the freshly built PagePilot.dll beside the test executable to avoid same-version assembly-cache reuse. The test uses the existing model configuration and only its new synthetic document. tests/ComplexSearch.csproj takes a disposable DOCX containing fields and controls. tests/operations.py and tests/objects_live.py require the named synthetic QA fixture and explicit automatic approval.
 
-`tests/electron-ui.cjs` and `tests/chatbox_api.cjs` are test-only staging injections loaded by a temporary bootstrap. They use Electron's own DOM/IPC and native input without a debugger server. Restore the unmodified repository bootstrap before packaging. The synthetic document is PagePilot-v020-QA.docx. Set PAGEPILOT_QA_OUTPUT to an isolated test folder; no real user document is used.
+The Electron tests are staging-only injections; the release bootstrap must equal chatbox/bootstrap.cjs. No debugger port or test injection is shipped.
 
-## Limits
+## Practical limits
 
-129 advertised interfaces are not 129 individually exhaustive behavior tests. Large documents, mixed-monitor DPI, multiple Word processes, complex nested/merged tables, and all upstream destructive edge cases remain further acceptance work. The local build succeeded; NuGet vulnerability-feed retrieval was unavailable (NU1900), not counted as a passed security audit.
-
-Prior-release tests are retained in TESTING-v0.1.0.md as historical evidence, not silently counted as new executions.
+- The regex engine remains .NET with its existing capture/replacement semantics and a 500 ms per-match timeout. A cancellation token stops superseded work; one million results is the memory protection limit.
+- Highlights cover the active visible main-story viewport, with a 600-rectangle / 35 ms paint-work budget. Complex wrapping and unusual Word views depend on Word's GetPoint geometry.
+- Complex nested fields may require character-by-character COM mapping. The 100,001-match microbenchmark measures matching only, not Word extraction or field mapping.
+- Idle same-length document changes are detected approximately every 5.4 seconds; length changes are detected sooner. Every navigation/replacement verifies current content.
+- Inline AI uses the selected HTTPS OpenAI-compatible chat-completions provider. Other provider protocols remain available through the full assistant. Batches preserve original paragraph indices; cross-batch hierarchy consistency remains model-dependent.
+- Persistent scroll/highlight overlays are not written into the document. The overlay is hidden when Word loses foreground focus or the pane is closed.

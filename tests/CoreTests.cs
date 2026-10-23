@@ -21,6 +21,14 @@ class Tests {
   Assert(rejected,"Table boundaries protected");
   bool timeout=false;try{Engine.Compile("^(a+)+$").IsMatch(new string('a',100000)+"!");}catch(RegexMatchTimeoutException){timeout=true;}
   Assert(timeout,"Catastrophic regex times out");
+  Assert(Engine.Level("2024.10.23 会议纪要",Engine.Defaults)==0,"Date excluded");
+  Assert(Engine.Level("3.5 亿元",Engine.Defaults)==0,"Amount excluded");
+  Assert(Engine.Level("Part of the reason is cost.",Engine.Defaults)==0,"English body excluded");
+  Assert(Engine.Level("1.1. 范围",Engine.Defaults)==2,"Trailing dot depth");
+  Assert(Engine.Level("1. 范围",Engine.Defaults)==3,"Official numeric level");
+  var watch=System.Diagnostics.Stopwatch.StartNew();
+  Assert(Engine.Find(new string('a',100001),0,"a","b",false).Count==100001,"100001 matches");
+  Console.WriteLine("100001 matches ms="+watch.ElapsedMilliseconds);
   Console.WriteLine(count+" checks passed");
  }
 }

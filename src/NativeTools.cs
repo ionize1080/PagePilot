@@ -12,7 +12,7 @@ namespace PagePilot {
    string name=Regex.Replace((string)doc.Name,@"[^\p{L}\p{N}._-]","_");
    File.WriteAllText(Path.Combine(folder,DateTime.UtcNow.ToString("yyyyMMdd-HHmmss-fffffff")+"-"+name+".xml"),(string)doc.WordOpenXML);
   }
-  internal static object Ascii(dynamic doc){Backup(doc);string text=(string)doc.Content.Text;int count=0;foreach(Match m in Regex.Matches(text,@"[\u0021-\u007e]+")){dynamic r=doc.Range((int)doc.Content.Start+m.Index,(int)doc.Content.Start+m.Index+m.Length);r.Font.NameAscii="Times New Roman";r.Font.NameOther="Times New Roman";r.Font.Size=10.5f;count++;}return new{formattedRuns=count};}
+  internal static object Ascii(dynamic doc){Backup(doc);doc.Content.Font.NameAscii="Times New Roman";return new{formatted=true,preservedFontSizes=true};}
   internal static object Tables(dynamic doc,float margin){Backup(doc);int count=0;foreach(dynamic table in doc.Tables){table.Rows.Alignment=1;table.TopPadding=margin;table.BottomPadding=margin;table.LeftPadding=margin;table.RightPadding=margin;table.Borders.Enable=1;table.Borders.OutsideLineWidth=4;table.Borders.InsideLineWidth=4;count++;}return new{formattedTables=count};}
   static string S(Dictionary<string,object>a,string key,string fallback="")=>a.ContainsKey(key)?Convert.ToString(a[key]):fallback;
   static int I(Dictionary<string,object>a,string key,int fallback=0)=>a.ContainsKey(key)?Convert.ToInt32(a[key]):fallback;
@@ -57,7 +57,7 @@ namespace PagePilot {
     var list=new List<Tuple<int,int>>();foreach(var item in (ArrayList)a["headings"]){var h=(Dictionary<string,object>)item;int i=I(h,"paragraph"),level=I(h,"level");if(i<1||i>(int)doc.Paragraphs.Count||level<1||level>9)throw new Exception("无效标题索引或级别。");list.Add(Tuple.Create(i,level));}
     Backup(doc);dynamic template=null;
     if(S(a,"numbering","false").Equals("true",StringComparison.OrdinalIgnoreCase)){
-     template=doc.ListTemplates.Add(true);for(int n=1;n<=9;n++){dynamic l=template.ListLevels[n];l.NumberFormat=string.Join(".",Enumerable.Range(1,n).Select(x=>"%"+x));l.NumberStyle=0;l.StartAt=1;l.ResetOnHigher=n-1;l.TrailingCharacter=0;l.NumberPosition=0;l.TextPosition=21f*n;}
+     try{template=doc.ListTemplates["PagePilot.Hierarchy"];}catch{template=doc.ListTemplates.Add(true,"PagePilot.Hierarchy");}for(int n=1;n<=9;n++){dynamic l=template.ListLevels[n];l.NumberFormat=string.Join(".",Enumerable.Range(1,n).Select(x=>"%"+x));l.NumberStyle=0;l.StartAt=1;l.ResetOnHigher=n-1;l.TrailingCharacter=0;l.NumberPosition=0;l.TextPosition=21f*n;}
     }
     foreach(var h in list){dynamic p=doc.Paragraphs[h.Item1];p.OutlineLevel=h.Item2;if(template!=null)p.Range.ListFormat.ApplyListTemplateWithLevel(template,true,0,1,h.Item2);}
     return new{applied=list.Count};

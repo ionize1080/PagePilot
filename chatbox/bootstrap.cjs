@@ -35,11 +35,11 @@ app.on('browser-window-created',(_,window)=>{
  window.on('closed',()=>app.exit(0));
 });
 require('./native/dist/main/main.js');
-let polling=false;
+let polling=false,missing=0;
 async function putPrompt(text){
  const focus="(()=>{const input=document.querySelector('#message-input');if(!input)return false;input.focus();input.select();return true;})()";
  if(!await primary.webContents.executeJavaScript(focus,true))primary.webContents.send('navigate-to','/');
  for(let i=0;i<50;i++){if(await primary.webContents.executeJavaScript(focus,true)){await primary.webContents.insertText(text);return;}await new Promise(r=>setTimeout(r,100));}
  throw Error('请打开一个 AI 对话后重试目录识别');
 }
-const health=setInterval(async()=>{if(polling)return;polling=true;try{const p=await host('ping',{role:'ai'});if(!primary)return;if(p.activate){primary.show();primary.focus();}if(p.provider){primary.show();primary.focus();primary.webContents.send('navigate-to','/settings/provider');}if(p.prompt){primary.show();primary.focus();await putPrompt(p.prompt);}if(p.state.mode!==displayMode)applyMode(p.state.mode);primary.webContents.send('pagepilot:state',p.state);}catch{app.quit();}finally{polling=false;}},1500);health.unref();
+const health=setInterval(async()=>{if(polling)return;polling=true;try{const p=await host('ping',{role:'ai'});missing=0;if(!primary)return;if(p.activate){primary.show();primary.focus();}if(p.provider){primary.show();primary.focus();primary.webContents.send('navigate-to','/settings/provider');}if(p.prompt){primary.show();primary.focus();await putPrompt(p.prompt);}if(p.state.mode!==displayMode)applyMode(p.state.mode);primary.webContents.send('pagepilot:state',p.state);}catch(e){if(['ENOENT','ECONNREFUSED'].includes(e.code)&&++missing>=3)app.quit();}finally{polling=false;}},1500);health.unref();

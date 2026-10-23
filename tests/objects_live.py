@@ -6,6 +6,9 @@ from mcp_client import Client,current_session
 root=Path(__file__).resolve().parents[1]
 app=win32com.client.GetActiveObject('Word.Application');doc=app.ActiveDocument
 assert doc.Name=='PagePilot-v020-QA.docx'
+doc.Content.Text='第一章 总则\r第一节 范围\r收入从100增长到120，增长10%。\r第二章 结论\rQA text ABC 2024.\r'
+doc.Content.ListFormat.RemoveNumbers()
+doc.TrackRevisions=False
 document=str(doc.FullName);c=Client(root/'dist',current_session());report=[]
 def call(name,**args):
     result=c.call(name,args);assert not result.get('isError'),result
