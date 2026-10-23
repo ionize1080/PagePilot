@@ -15,6 +15,7 @@ Date: 2026-10-23 (Asia/Singapore).
 * Separate WPF regex and navigation panes visually verified at 200% DPI, simultaneously open with independent close controls.
 * Actual WPF regex UI previews two capture-group matches, obtains approval, and writes [2024]/[2025] to the fixture; COM readback confirms exact content and unchanged outline level.
 * Electron settings reads and saves the session approval flag; its provider button opens the original Chatbox model settings.
+* Closing the last document and opening a new one with the same Word window handle rebinds the pane, clears old regex previews, and selects the new heading; outline remains unchanged.
 * Native caption extension inserts an actual Word SEQ field, verified through COM after stdio invocation.
 * 11 regex/heading engine assertions: Chinese headings, decimal levels, body exclusion, offsets, named capture replacement, zero-width matches, Word paragraph anchors, paragraph/cell protection, regex timeout.
 * stdio initialize / tools/list discovers all 120 upstream tools, plus PagePilot extensions; no filter drops upstream tools.

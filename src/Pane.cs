@@ -10,7 +10,7 @@ using System.Windows.Forms.Integration;
 namespace PagePilot {
  [ComVisible(true),Guid("79CEEFC8-67F4-4F55-9475-24C0681BFBBD"),ProgId("PagePilot.Pane"),ClassInterface(ClassInterfaceType.AutoDispatch)]
  public sealed class Pane:System.Windows.Forms.UserControl {
-  private Connect host;private dynamic doc;private int page;
+  private Connect host;private dynamic doc;private int page,windowHandle;
   private FrameworkElement view;private TextBox pattern,replacement;private CheckBox ignore,selection;
   private ListBox hits,headings;private TextBlock status;
   private List<Hit> found=new List<Hit>();private string snapshot;private int snapshotStart,snapshotEnd;private bool snapshotSelection;
@@ -20,7 +20,7 @@ namespace PagePilot {
   private T Find<T>(string name) where T:class=>view.FindName(name) as T;
   private void On(string name,Action action){Find<Button>(name).Click+=(s,e)=>Guard(action);}
   internal void Bind(Connect h,object document,int mode){
-   host=h;doc=document;page=mode;
+   host=h;doc=document;page=mode;windowHandle=(int)h.App.ActiveWindow.Hwnd;
    using(var stream=typeof(Pane).Assembly.GetManifestResourceStream("PagePilot.Views."+(mode==0?"Regex":"Navigation")+".xaml"))view=(FrameworkElement)XamlReader.Load(stream);
    Controls.Add(new ElementHost{Dock=System.Windows.Forms.DockStyle.Fill,Child=view});status=Find<TextBlock>("Status");
    On("Settings",()=>host.OpenSettings(null));
@@ -31,11 +31,20 @@ namespace PagePilot {
    }else{
     headings=Find<ListBox>("Headings");On("Refresh",RefreshOutline);On("Analyze",AIOutline);On("Apply",ApplyOutline);
     headings.MouseDoubleClick+=(s,e)=>Guard(()=>{var item=headings.SelectedItem as Heading;if(item!=null){if((string)doc.Content.Text!=outlineSnapshot){RefreshOutline();throw new Exception("文档已变化，导航已刷新，请重新选择。");}doc.Activate();doc.Range(item.Start,item.End).Select();host.App.ActiveWindow.ScrollIntoView(doc.Range(item.Start,item.End));}});
-    timer.Tick+=(s,e)=>{if(Visible){try{if((string)doc.Content.Text!=outlineSnapshot||Connect.ReadRulesText()!=ruleSnapshot)RefreshOutline();}catch{}}};timer.Start();
    }
+   timer.Tick+=(s,e)=>{if(Visible){try{RefreshBinding();if(page==1&&((string)doc.Content.Text!=outlineSnapshot||Connect.ReadRulesText()!=ruleSnapshot))RefreshOutline();}catch{}}};timer.Start();
   }
-  public void SelectPage(int index){if(page==1&&outlineSnapshot==null)Guard(RefreshOutline);}
-  private void Guard(Action action){try{action();}catch(Exception e){status.Text=e.Message;System.Windows.Forms.MessageBox.Show(e.Message,"PagePilot");}}
+  private void RefreshBinding(){
+   if(host.App.Documents.Count==0||(int)host.App.ActiveWindow.Hwnd!=windowHandle)return;
+   dynamic current=host.App.ActiveDocument;bool same=false;
+   try{same=object.Equals(doc,current)&&(string)doc.FullName==(string)current.FullName;}catch{}
+   if(same)return;
+   doc=current;snapshot=null;outlineSnapshot=null;found.Clear();outline.Clear();
+   if(hits!=null)hits.ItemsSource=null;if(headings!=null)headings.ItemsSource=null;
+   status.Text="已切换文档 · 请重新预览";
+  }
+  public void SelectPage(int index){Guard(()=>{if(page==1&&outlineSnapshot==null)RefreshOutline();});}
+  private void Guard(Action action){try{RefreshBinding();action();}catch(Exception e){status.Text=e.Message;System.Windows.Forms.MessageBox.Show(e.Message,"PagePilot");}}
   private void FindMatches(){
    dynamic range=selection.IsChecked==true?host.App.Selection.Range:doc.Content;
    if(selection.IsChecked==true&&!object.Equals(host.App.ActiveDocument,doc))throw new Exception("请激活此窗格对应的文档后再查找。");
