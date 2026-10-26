@@ -20,7 +20,7 @@ namespace PagePilot {
   private readonly System.Windows.Forms.Timer timer=new System.Windows.Forms.Timer{Interval=1800};
   public Pane(){AutoScaleMode=System.Windows.Forms.AutoScaleMode.None;}
   private T Find<T>(string name) where T:class=>view.FindName(name) as T;
-  private void On(string name,Action action){Find<Button>(name).Click+=(s,e)=>Guard(action);}
+  private void On(string name,Action action){Find<Button>(name).Click+=(s,e)=>{Connect.Log("pane.command page="+page+" action="+name);Guard(action);};}
   internal void Bind(Connect h,object document,int mode){
    host=h;doc=document;page=mode;windowHandle=WordWindows.Handle(h.App.ActiveWindow).ToInt64();
    using(var stream=typeof(Pane).Assembly.GetManifestResourceStream("PagePilot.Views."+(mode==0?"Regex":"Navigation")+".xaml"))view=(FrameworkElement)XamlReader.Load(stream);
@@ -58,10 +58,10 @@ namespace PagePilot {
    status.Text="已切换文档 · 请重新预览";
   }
   public void SelectPage(int index){Guard(()=>{if(page==1&&outlineSnapshot==null)RefreshOutline();});}
-  private void Guard(Action action){try{RefreshBinding();action();}catch(Exception e){status.Text=e.Message;System.Windows.Forms.MessageBox.Show(e.Message,"PagePilot");}}
+  private void Guard(Action action){try{RefreshBinding();action();}catch(Exception e){PagePilot.Configuration.RuntimeLog.Write("host","pane.failed",e.GetType().Name+" stack="+e.StackTrace,"error");status.Text=e.Message;System.Windows.Forms.MessageBox.Show(e.Message,"PagePilot");}}
   private void ScheduleSearch(){searchCancel?.Cancel();highlight?.Hide();searchVersion++;snapshot=null;searchTimer.Stop();searchTimer.Start();}
   private async void FindMatches(){
-   searchCancel?.Cancel();var cancel=new System.Threading.CancellationTokenSource();searchCancel=cancel;int version=++searchVersion;
+   searchCancel?.Cancel();var cancel=new System.Threading.CancellationTokenSource();searchCancel=cancel;int version=++searchVersion;var watch=System.Diagnostics.Stopwatch.StartNew();PagePilot.Configuration.RuntimeLog.Write("host","regex.search.begin","revision="+version,"debug");
    try{
     if(string.IsNullOrEmpty(pattern.Text)){found.Clear();hits.ItemsSource=null;status.Text="输入表达式开始查找";return;}
     dynamic range=doc.Content;
@@ -96,8 +96,8 @@ namespace PagePilot {
     foreach(var hit in result){int a=hit.Start,b=a+hit.Length;hit.Start=positions==null?start+a:positions[a];hit.Length=(positions==null?start+b:(a==b?positions[a]:ends[b-1]))-hit.Start;}
     cachedText=text;cachedQuery=query;cachedIgnore=ic;cachedPositions=positions;cachedEnds=ends;
     snapshot=full;snapshotDocumentEnd=(int)doc.Content.End;snapshotStart=start;snapshotEnd=end;snapshotSelection=selected;found=result;
-    hits.ItemsSource=null;hits.ItemsSource=found;status.Text=$"找到 {found.Count:N0} 项 · 单击跳转";
-   }catch(OperationCanceledException){}catch(Exception e){Connect.Log("Search: "+e.ToString());if(version==searchVersion){snapshot=null;hits.ItemsSource=null;status.Text=e.Message;}}finally{if(searchCancel==cancel)searchCancel=null;cancel.Dispose();}
+    hits.ItemsSource=null;hits.ItemsSource=found;status.Text=$"找到 {found.Count:N0} 项 · 单击跳转";PagePilot.Configuration.RuntimeLog.Write("host","regex.search.completed","revision="+version+" matches="+found.Count+" ms="+watch.ElapsedMilliseconds,"debug");
+   }catch(OperationCanceledException){PagePilot.Configuration.RuntimeLog.Write("host","regex.search.cancelled","revision="+version,"debug");}catch(Exception e){PagePilot.Configuration.RuntimeLog.Write("host","regex.search.failed",e.GetType().Name+" stack="+e.StackTrace,"error");if(version==searchVersion){snapshot=null;hits.ItemsSource=null;status.Text=e.Message;}}finally{if(searchCancel==cancel)searchCancel=null;cancel.Dispose();}
   }
   private void UpdateReplacement(){
    if(snapshot==null||cachedText==null){ScheduleSearch();return;}
@@ -120,7 +120,7 @@ namespace PagePilot {
     if(count>0)doc.Undo(1);
     throw;
    }finally{if(recording)host.App.UndoRecord.EndCustomRecord();snapshot=null;hits.ItemsSource=null;}
-   status.Text=$"已替换 {count:N0} 项 · 可一步撤销";
+   status.Text=$"已替换 {count:N0} 项 · 可一步撤销";Connect.Log("regex.replace.completed count="+count);
   }
 
   internal static List<HeadingRule> ParseRules(string text){
@@ -136,8 +136,8 @@ namespace PagePilot {
     }
     if(version!=outlineVersion||IsDisposed||!object.Equals(document,doc))return;
     if((string)doc.Content.Text!=before){status.Text="文档已变化，请刷新目录";return;}
-    outline=result;outlineSnapshot=before;outlineEnd=end;ruleSnapshot=rulesText;RenderOutline();status.Text=$"识别 {outline.Count} 个标题 · 单击跳转";
-   }catch(Exception e){if(!IsDisposed&&version==outlineVersion)status.Text="目录读取失败："+e.Message;}
+    outline=result;outlineSnapshot=before;outlineEnd=end;ruleSnapshot=rulesText;RenderOutline();status.Text=$"识别 {outline.Count} 个标题 · 单击跳转";Connect.Log("navigation.scan.completed headings="+outline.Count);
+   }catch(Exception e){PagePilot.Configuration.RuntimeLog.Write("host","navigation.scan.failed",e.GetType().Name+" stack="+e.StackTrace,"error");if(!IsDisposed&&version==outlineVersion)status.Text="目录读取失败："+e.Message;}
   }
   private void RenderOutline(){
    rebuilding=true;try{headings.Items.Clear();var stack=new Stack<TreeViewItem>();foreach(var item in outline){

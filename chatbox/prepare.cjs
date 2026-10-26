@@ -44,7 +44,7 @@ window.pagepilotCapture=async message=>{
 let old=hash(renderer);fs.appendFileSync(renderer,injection);changes.push({file:'dist/renderer/js/index.TlLbGKvw.js',beforeSha256:old,afterSha256:hash(renderer),append:injection});
 const preload=path.join(native,'dist/preload/index.js');old=hash(preload);fs.appendFileSync(preload,'\n'+fs.readFileSync(path.join(__dirname,'preload.cjs'),'utf8'));changes.push({file:'dist/preload/index.js',beforeSha256:old,afterSha256:hash(preload),appendFile:'chatbox/preload.cjs'});
 fs.copyFileSync(path.join(__dirname,'bootstrap.cjs'),path.join(out,'bootstrap.cjs'));
-for(const name of ['settings-preload.cjs','settings-entry.cjs','host.cjs','settings.html','settings.js'])fs.copyFileSync(path.join(__dirname,name),path.join(out,name));
+for(const name of ['settings-preload.cjs','settings-entry.cjs','host.cjs','event-log.cjs','settings.html','settings.js'])fs.copyFileSync(path.join(__dirname,name),path.join(out,name));
 fs.cpSync(path.join(__dirname,'icons'),path.join(out,'icons'),{recursive:true});
 fs.writeFileSync(path.join(out,'package.json'),JSON.stringify({name:'xyz.chatboxapp.app',productName:'PagePilot Chatbox',version:'1.20.3',private:true,main:'bootstrap.cjs'}));
 fs.writeFileSync(path.join(out,'provenance.json'),JSON.stringify({version:'1.20.3',installerSha256:hash(installer),archiveSha256:hash(archive),changes},null,2));

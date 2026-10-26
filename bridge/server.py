@@ -10,6 +10,9 @@ import os
 from pathlib import Path
 import shutil
 import sys
+import time
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from event_log import event
 from datetime import datetime, timezone
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8")
@@ -185,6 +188,19 @@ class Approval(Middleware):
         self.lock = asyncio.Lock()
 
     async def on_call_tool(self, context, call_next):
+        started = time.monotonic()
+        name = context.message.name
+        event('tool.begin', name)
+        try:
+            result = await self.execute(context, call_next)
+            event('tool.returned', f'{name} ms={(time.monotonic()-started)*1000:.1f} is_error={getattr(result, "is_error", None)}')
+            return result
+        except Exception as exc:
+            import traceback
+            event('tool.failed', f'{name} type={type(exc).__name__} stack=' + ''.join(traceback.format_tb(exc.__traceback__)), 'error')
+            raise
+
+    async def execute(self, context, call_next):
         async with self.lock:
             name = context.message.name
             tool = await mcp.get_tool(name)
@@ -212,7 +228,7 @@ class Approval(Middleware):
                 if live and doc:
                     host("checkpoint", document=doc["path"])
                 # Back up file edits. Upstream refuses editing Word-locked files.
-                folder = Path(os.environ.get("LOCALAPPDATA", str(ROOT))) / "PagePilot" / "backups"
+                folder = Path(os.environ.get("PAGEPILOT_DATA") or str(Path(os.environ.get("LOCALAPPDATA", str(ROOT))) / "PagePilot")) / "backups"
                 folder.mkdir(parents=True, exist_ok=True)
                 for key in ("filename", "source_filename", "destination_filename"):
                     value = args.get(key)
@@ -256,6 +272,7 @@ if __name__ == "__main__":
     if "--inventory" in sys.argv:
         print(json.dumps(asyncio.run(inventory()), ensure_ascii=False, indent=2))
     else:
+        event('bridge.start', 'stdio')
         configure_com()
         try:
             host("metric", stage="mcp_ready")

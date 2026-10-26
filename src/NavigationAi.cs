@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 namespace PagePilot {
  internal static class NavigationAi {
   internal static async Task<List<Heading>> Analyze(List<Heading> paragraphs,string requirement,IProgress<string> progress,CancellationToken cancel){
-   string file=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),"PagePilot","Chatbox-1.20.3","config.json");
+   string file=Path.Combine(PagePilot.Configuration.RuntimePaths.Current.ProfileDirectory,"Chatbox-1.20.3","config.json");
    var config=Connect.Json().Deserialize<Dictionary<string,object>>(File.ReadAllText(file));
    var settings=(Dictionary<string,object>)config["settings"];
    var selected=(Dictionary<string,object>)settings["defaultChatModel"];

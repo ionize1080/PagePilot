@@ -1,0 +1,7 @@
+{
+  "SchemaVersion": 1,
+  "DataDirectory": "%LOCALAPPDATA%\\PagePilot",
+  "ProfileDirectory": "%APPDATA%\\PagePilot",
+  "LogDirectory": "%LOCALAPPDATA%\\PagePilot\\logs",
+  "LogLevel": "debug"
+}

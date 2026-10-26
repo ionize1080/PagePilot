@@ -2,10 +2,11 @@
   <PropertyGroup>
     <TargetFramework>net48</TargetFramework><UseWindowsForms>true</UseWindowsForms>
     <LangVersion>latest</LangVersion><AssemblyName>PagePilot</AssemblyName>
-    <Version>0.4.0</Version><GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+    <Version>0.4.1</Version><GenerateAssemblyInfo>true</GenerateAssemblyInfo>
     <Platforms>AnyCPU</Platforms>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="../shared/RuntimeSettings.cs" Link="RuntimeSettings.cs" />
     <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
     <Reference Include="Office"><HintPath>$(OfficePiaPath)</HintPath><EmbedInteropTypes>true</EmbedInteropTypes><Private>false</Private></Reference>
     <Reference Include="Extensibility"><HintPath>C:\Program Files (x86)\Common Files\Microsoft Shared\MSEnv\PublicAssemblies\extensibility.dll</HintPath><EmbedInteropTypes>true</EmbedInteropTypes><Private>false</Private></Reference>

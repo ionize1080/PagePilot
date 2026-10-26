@@ -14,6 +14,7 @@ using System.Windows.Forms;
 using System.Web.Script.Serialization;
 using Office=Microsoft.Office.Core;
 using Extensibility;
+using PagePilot.Configuration;
 namespace PagePilot {
  [ComVisible(true),Guid("0E057EBB-B35B-4A31-9B65-3DF44E8034CE"),ProgId("PagePilot.Connect"),ClassInterface(ClassInterfaceType.AutoDispatch)]
  public sealed class Connect:IDTExtensibility2,Office.IRibbonExtensibility,Office.ICustomTaskPaneConsumer {
@@ -24,17 +25,18 @@ namespace PagePilot {
   internal string Token;
   internal string PipeName;
   internal static string Root=>Path.GetDirectoryName(typeof(Connect).Assembly.Location);
-  internal static string Data=>Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"PagePilot");
+  internal static string Data=>RuntimePaths.Current.DataDirectory;
   internal static JavaScriptSerializer Json()=>new JavaScriptSerializer{MaxJsonLength=16*1024*1024};
   private Office.ICTPFactory factory;
   private readonly Dictionary<string,Office.CustomTaskPane> panes=new Dictionary<string,Office.CustomTaskPane>();
   private bool pendingAI,pendingProvider;private string pendingPrompt;
   private Process settingsProcess;private Stopwatch settingsStartup;private IntPtr settingsHandle;internal double SettingsReadyMs;private Office.IRibbonUI ribbon;private Office.CustomTaskPane aiPane;private AiPane aiControl;private IntPtr aiHandle;
   private long aiOwner;internal int Theme=0,NavigationGap=36;internal string AiMode="window";private object approvalDocument;private bool approvalPending;private long stateRevision;
-  public void RibbonLoaded(Office.IRibbonUI value){ribbon=value;}
+  public void RibbonLoaded(Office.IRibbonUI value){ribbon=value;Log("RibbonLoaded");Health(ribbonReady:true);}
+  private void Health(string word=null,bool ready=false,bool ribbonReady=false)=>HostHealth.Update(typeof(Connect).Assembly.Location,typeof(Connect).Assembly.GetName().Version.ToString(),word,ready,ribbonReady);
   public object RibbonImage(Office.IRibbonControl control){IntPtr window=IntPtr.Zero;try{window=WordWindows.Handle(App.ActiveWindow);}catch{}return RibbonIcons.Picture(control.Id,window,Theme);}
   private void LoadPreferences(){try{var p=Json().Deserialize<Dictionary<string,object>>(File.ReadAllText(Path.Combine(Data,"preferences.json")));Theme=Convert.ToInt32(p["theme"]);NavigationGap=Convert.ToInt32(p["navigationGap"]);AiMode=Convert.ToString(p["aiMode"]);}catch{}}
-  private void SavePreferences(){Directory.CreateDirectory(Data);File.WriteAllText(Path.Combine(Data,"preferences.json"),Json().Serialize(new{theme=Theme,navigationGap=NavigationGap,aiMode=AiMode}));}
+  private void SavePreferences(){Directory.CreateDirectory(Data);File.WriteAllText(Path.Combine(Data,"preferences.json"),Json().Serialize(new{theme=Theme,navigationGap=NavigationGap,aiMode=AiMode}));RuntimeLog.Write("host","preferences.saved","theme="+Theme+" navigationGap="+NavigationGap+" aiMode="+AiMode);}
   internal void QueuePrompt(string text){pendingPrompt=text;LaunchChat();}
   private void SetAiMode(string mode){
    if(mode!="sidebar"&&mode!="window")throw new Exception("无效显示模式");
@@ -50,21 +52,24 @@ namespace PagePilot {
   private NamedPipeServerStream listener;
   private volatile bool stopping;
   private Process chat;private Stopwatch assistantStartup;internal readonly Dictionary<string,double> AssistantMetrics=new Dictionary<string,double>();
-  internal static void Log(string message){try{Directory.CreateDirectory(Data);File.AppendAllText(Path.Combine(Data,"host.log"),DateTime.UtcNow.ToString("o")+" "+message+Environment.NewLine);}catch{}}
+  internal static void Log(string message)=>RuntimeLog.Write("host","host.event",message);
   public void OnConnection(object app,ext_ConnectMode mode,object addin,ref Array custom){
    using(var timing=new Performance("addin.connect")){
-   Log("OnConnection");
+   try{
+   RuntimePaths.Reload();HostHealth.Reset(typeof(Connect).Assembly.Location,typeof(Connect).Assembly.GetName().Version.ToString());Log("OnConnection version="+typeof(Connect).Assembly.GetName().Version+" root="+Root+" bitness="+(Environment.Is64BitProcess?64:32)+" config="+RuntimePaths.ConfigFile);
+   if(RuntimePaths.Warning!=null)RuntimeLog.Write("host","config.fallback",RuntimePaths.Warning,"error");
    Current=this;App=app;LoadPreferences();Dispatcher=new Control();var h=Dispatcher.Handle;
    ((dynamic)addin).Object=this;
-   try{StartBridge();Log("Connected Word "+App.Version);}catch(Exception e){Log(e.ToString());}
+   StartBridge();Log("Connected Word "+App.Version);Health((string)App.Version,true);
+   }catch(Exception e){RuntimeLog.Write("host","connect.failed",e.ToString(),"error");throw;}
    }
   }
-  public void OnDisconnection(ext_DisconnectMode mode,ref Array custom){Shutdown();}
-  public void OnBeginShutdown(ref Array custom){Shutdown();}
-  public void OnStartupComplete(ref Array custom){}
+  public void OnDisconnection(ext_DisconnectMode mode,ref Array custom){Log("OnDisconnection mode="+mode);Shutdown();}
+  public void OnBeginShutdown(ref Array custom){Log("OnBeginShutdown");Shutdown();}
+  public void OnStartupComplete(ref Array custom){Log("OnStartupComplete");}
   public void OnAddInsUpdate(ref Array custom){}
-  private void Shutdown(){stopping=true;aiControl?.Detach();try{if(settingsProcess!=null&&!settingsProcess.HasExited)settingsProcess.CloseMainWindow();}catch{}listener?.Dispose();listener=null;try{if(chat!=null&&!chat.HasExited)chat.CloseMainWindow();}catch{} Dispatcher?.Dispose();panes.Clear();Current=null;}
-  public void CTPFactoryAvailable(Office.ICTPFactory value){factory=value;}
+  private void Shutdown(){HostHealth.Reset(typeof(Connect).Assembly.Location,typeof(Connect).Assembly.GetName().Version.ToString());stopping=true;aiControl?.Detach();try{if(settingsProcess!=null&&!settingsProcess.HasExited)settingsProcess.CloseMainWindow();}catch{}listener?.Dispose();listener=null;try{if(chat!=null&&!chat.HasExited)chat.CloseMainWindow();}catch{} Dispatcher?.Dispose();panes.Clear();Current=null;Log("Shutdown completed");}
+  public void CTPFactoryAvailable(Office.ICTPFactory value){factory=value;Log("CTPFactoryAvailable");}
   public string GetCustomUI(string ribbonId)=>@"<customUI xmlns='http://schemas.microsoft.com/office/2009/07/customui' onLoad='RibbonLoaded'><ribbon><tabs><tab id='PagePilot' label='PagePilot'><group id='ppTools' label='文档增强'><button id='ppAI' label='AI 助手' getImage='RibbonImage' size='large' onAction='OpenAI'/><button id='ppRegex' label='正则查找替换' getImage='RibbonImage' size='large' onAction='OpenRegex'/><button id='ppNav' label='自动导航' getImage='RibbonImage' size='large' onAction='OpenNavigation'/><button id='ppSettings' label='设置' getImage='RibbonImage' size='large' onAction='OpenSettings'/></group></tab></tabs></ribbon></customUI>";
   public void OpenAI(Office.IRibbonControl c){if(Dispatcher.InvokeRequired){Dispatcher.Invoke(new Action(()=>OpenAI(c)));return;}try{LaunchChat();}catch(Exception e){MessageBox.Show(e.Message,"PagePilot");}}
   public void LaunchAssistant(){OpenAI(null);}
@@ -102,7 +107,8 @@ namespace PagePilot {
    if(!File.Exists(executable))throw new FileNotFoundException("Chatbox 运行组件缺失，请使用完整便携包。");
    var p=new ProcessStartInfo(executable,"\""+entry+"\""){UseShellExecute=false,WorkingDirectory=Root};
    p.EnvironmentVariables["PAGEPILOT_PIPE"]=PipeName;p.EnvironmentVariables["PAGEPILOT_TOKEN"]=Token;
-   p.EnvironmentVariables["PAGEPILOT_ROOT"]=Root;return Process.Start(p);
+   p.EnvironmentVariables["PAGEPILOT_ROOT"]=Root;p.EnvironmentVariables["PAGEPILOT_DATA"]=Data;p.EnvironmentVariables["PAGEPILOT_PROFILE"]=RuntimePaths.Current.ProfileDirectory;p.EnvironmentVariables["PAGEPILOT_LOGS"]=RuntimePaths.Current.LogDirectory;p.EnvironmentVariables["PAGEPILOT_LOG_LEVEL"]=RuntimePaths.Current.LogLevel;
+   Log("Process start entry="+(entryFile??"Chatbox")+" profile="+RuntimePaths.Current.ProfileDirectory);return Process.Start(p);
   }
   private void StartBridge(){
    byte[] bytes=new byte[32];using(var rng=RandomNumberGenerator.Create())rng.GetBytes(bytes);Token=BitConverter.ToString(bytes).Replace("-","").ToLowerInvariant();
@@ -118,8 +124,9 @@ namespace PagePilot {
     var b=new StringBuilder();int ch;while((ch=reader.Read())!=-1&&ch!='\n'){if(b.Length>=8*1024*1024)throw new Exception("Request too large");b.Append((char)ch);}
     var req=Json().Deserialize<Dictionary<string,object>>(b.ToString());
     if(!req.TryGetValue("token",out var token)||!FixedEquals(Convert.ToString(token),Token))throw new Exception("Unauthorized");
-    object result=null;Exception fault=null;
+    object result=null;Exception fault=null;string action=Convert.ToString(req["action"]);var watch=Stopwatch.StartNew();string logLevel=new[]{"ping","identity","binding","metric"}.Contains(action)?"debug":"info";RuntimeLog.Write("host","request.begin",action,logLevel);
     Dispatcher.Invoke(new Action(()=>{try{result=Handle(req);}catch(Exception e){fault=e;}}));
+    RuntimeLog.Write("host",fault==null?"request.completed":"request.failed",action+" ms="+watch.ElapsedMilliseconds+(fault==null?"":" type="+fault.GetType().FullName+" stack="+fault.StackTrace),fault==null?logLevel:"error");
     writer.WriteLine(Json().Serialize(fault==null?new{result,error=(string)null}:new{result=(object)null,error=fault.Message}));
    }
   }catch(Exception e){Log("Bridge: "+e.GetType().Name);}}}

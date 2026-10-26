@@ -11,12 +11,13 @@ using System.Text;
 using System.Web.Script.Serialization;
 using System.Windows.Forms;
 using System.Threading.Tasks;
+using PagePilot.Configuration;
 namespace PagePilot.Deployment {
  public sealed class Value {public string Name{get;set;}public int Kind{get;set;}public string[] Data{get;set;}}
  public sealed class Tree {public List<Value> Values{get;set;}=new List<Value>();public Dictionary<string,Tree> Children{get;set;}=new Dictionary<string,Tree>();}
  public sealed class Entry {public string Path{get;set;}public int View{get;set;}public Tree Before{get;set;}public Tree After{get;set;}}
  public sealed class Journal {public string Root{get;set;}public string Operation{get;set;}public List<Entry> Entries{get;set;}public string State{get;set;}}
- internal static class Manager {
+ internal static partial class Manager {
   static readonly string[] Classes={"PagePilot.Connect","PagePilot.AiPane","PagePilot.Pane"};
   static readonly string[] Ids={"{0E057EBB-B35B-4A31-9B65-3DF44E8034CE}","{246818DC-B9A5-4328-9E71-69575A825B92}","{79CEEFC8-67F4-4F55-9475-24C0681BFBBD}"};
   const string Addin=@"Software\Microsoft\Office\Word\Addins\PagePilot.Connect";
@@ -27,7 +28,7 @@ namespace PagePilot.Deployment {
   static RegistryKey User(RegistryView v)=>RegistryKey.OpenBaseKey(RegistryHive.CurrentUser,v);
   static string Key(string path)=>testPrefix+path;
   static string Dll=>Path.Combine(root,"PagePilot.dll");
-  static void Closed(){if(testPrefix==""&&Process.GetProcessesByName("WINWORD").Length>0)throw new Exception("请先保存并关闭所有 Word 窗口，再切换或停用版本。");}
+  static void Closed(){if(testPrefix==""&&WordProcesses().Length>0)throw new Exception("Word 仍在运行。请先保存并关闭；无响应时可使用“强制关闭 Word”。");}
   static string DetectWord(){
    foreach(var view in new[]{RegistryView.Registry64,RegistryView.Registry32})foreach(var hive in new[]{RegistryHive.LocalMachine,RegistryHive.CurrentUser})using(var baseKey=RegistryKey.OpenBaseKey(hive,view))using(var key=baseKey.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\App Paths\WINWORD.EXE")){
     string path=Convert.ToString(key?.GetValue(""));if(File.Exists(path))return path;
@@ -60,51 +61,48 @@ namespace PagePilot.Deployment {
   static string JournalPath=>Path.Combine(data,"last.json");
   static void RecoverPending(){if(!File.Exists(JournalPath))return;var j=json.Deserialize<Journal>(File.ReadAllText(JournalPath));if(j.State=="pending")throw new Exception("检测到上次部署中断。请先选择“回退注册”，恢复后再启用。");}
   static void Change(string operation,RegistryView view,bool injectFailure=false){
+   Event("deploy.begin",operation+" root="+root+" registry="+view);
    Closed();RecoverPending();Ownership(view,operation=="disable");if(operation=="enable"&&testPrefix=="")ValidatePackage(true);
+   if(operation=="enable"&&!injectFailure&&IsRegistered(view)){Event("deploy.unchanged","已经注册此版本，保留上一份回退记录");return;}
    var j=new Journal{Root=root,Operation=operation,State="pending",Entries=Snapshot(view)};
    if(File.Exists(JournalPath))File.Copy(JournalPath,Path.Combine(data,DateTime.UtcNow.ToString("yyyyMMdd-HHmmss-fffffff")+".json"));Atomic(JournalPath,j);
    try{using(var user=User(view)){
     if(operation=="disable"){foreach(var e in j.Entries)user.DeleteSubKeyTree(Key(e.Path),false);}
     else{
-     string assembly=testPrefix==""?AssemblyName.GetAssemblyName(Dll).FullName:"PagePilot, Version=0.4.0.0, Culture=neutral, PublicKeyToken=null";
+     string assembly=testPrefix==""?AssemblyName.GetAssemblyName(Dll).FullName:"PagePilot, Version=0.4.1.0, Culture=neutral, PublicKeyToken=null";
      for(int i=0;i<Classes.Length;i++){
       string path=@"Software\Classes\CLSID\"+Ids[i];using(var k=user.CreateSubKey(Key(path)))k.SetValue("",Classes[i]);
-      using(var k=user.CreateSubKey(Key(path+@"\InprocServer32"))){k.SetValue("","mscoree.dll");k.SetValue("ThreadingModel","Both");k.SetValue("Class",Classes[i]);k.SetValue("Assembly",assembly);k.SetValue("RuntimeVersion","v4.0.30319");k.SetValue("CodeBase",Dll);}
+      // Match RegAsm's CodeBase representation. CLR COM activation treats escaped spaces differently.
+      using(var k=user.CreateSubKey(Key(path+@"\InprocServer32"))){k.SetValue("","mscoree.dll");k.SetValue("ThreadingModel","Both");k.SetValue("Class",Classes[i]);k.SetValue("Assembly",assembly);k.SetValue("RuntimeVersion","v4.0.30319");k.SetValue("CodeBase",new Uri(Dll).ToString());}
       using(var k=user.CreateSubKey(Key(path+@"\ProgId")))k.SetValue("",Classes[i]);
       using(var k=user.CreateSubKey(Key(@"Software\Classes\"+Classes[i]+@"\CLSID")))k.SetValue("",Ids[i]);
       if(i>0){user.CreateSubKey(Key(path+@"\Control")).Dispose();user.CreateSubKey(Key(path+@"\Implemented Categories\{40FC6ED4-2438-11CF-A3DB-080036F12502}")).Dispose();}
+      Event("registry.class.written",Classes[i]+" view="+view);
       if(injectFailure&&i==1)throw new IOException("Injected registry failure");
      }
      using(var k=user.CreateSubKey(Key(Addin))){k.SetValue("FriendlyName","PagePilot");k.SetValue("Description","PagePilot · 当前用户半便携部署");k.SetValue("LoadBehavior",3,RegistryValueKind.DWord);}
     }
     foreach(var e in j.Entries)e.After=Read(user,Key(e.Path));
    }
-   if(operation=="enable"&&!SameLocation(CodeBase(view),Dll))throw new Exception("注册回读失败");j.State="completed";Atomic(JournalPath,j);
-   }catch{foreach(var e in j.Entries)using(var u=User((RegistryView)e.View))Write(u,Key(e.Path),e.Before);j.State="rolled_back";Atomic(JournalPath,j);throw;}
+   if(operation=="enable"&&!IsRegistered(view))throw new Exception("注册回读失败");j.State="completed";Atomic(JournalPath,j);Event("deploy.completed",operation+"; registration verified; Word load not yet verified");
+   }catch(Exception ex){Event("deploy.failed",ex.ToString(),"error");foreach(var e in j.Entries)using(var u=User((RegistryView)e.View))Write(u,Key(e.Path),e.Before);j.State="rolled_back";Atomic(JournalPath,j);Event("deploy.recovered","原注册已恢复");throw;}
   }
-  static void Rollback(){Closed();if(!File.Exists(JournalPath))throw new Exception("没有可回退的部署记录");var j=json.Deserialize<Journal>(File.ReadAllText(JournalPath));if(j.State!="completed"&&j.State!="pending")throw new Exception("上次部署已回退");foreach(var e in j.Entries)using(var u=User((RegistryView)e.View)){if(j.State=="completed"&&!Same(Read(u,Key(e.Path)),e.After))throw new Exception("注册已被其他操作修改，拒绝覆盖。请运行诊断。");}
+  static bool MatchesAfter(Entry entry,Tree current){
+   if(Same(current,entry.After))return true;
+   if(entry.Path!=Addin||current==null||entry.After==null)return false;
+   var actual=current.Values.FirstOrDefault(v=>v.Name=="LoadBehavior");var expected=entry.After.Values.FirstOrDefault(v=>v.Name=="LoadBehavior");
+   // Word clears the connected bit after a load failure. Permit only this known transition.
+   if(actual?.Kind!=4||expected?.Kind!=4||actual.Data.Length!=1||expected.Data.Length!=1||actual.Data[0]!="2"||expected.Data[0]!="3")return false;
+   actual.Data=new[]{"3"};return Same(current,entry.After);
+  }
+  static void Rollback(){Event("rollback.begin");Closed();if(!File.Exists(JournalPath))throw new Exception("没有可回退的部署记录");var j=json.Deserialize<Journal>(File.ReadAllText(JournalPath));if(j.State!="completed"&&j.State!="pending")throw new Exception("上次部署已回退");foreach(var e in j.Entries)using(var u=User((RegistryView)e.View)){if(j.State=="completed"&&!MatchesAfter(e,Read(u,Key(e.Path))))throw new Exception("注册已被其他操作修改，拒绝覆盖。请运行诊断。");}
    // Before restoring an older version, make sure its DLL still exists.
    foreach(var e in j.Entries){Tree t=e.Before;if(t!=null&&t.Children.TryGetValue("InprocServer32",out var server)){var code=server.Values.FirstOrDefault(v=>v.Name=="CodeBase");if(code!=null&&testPrefix==""&&!File.Exists(new Uri(code.Data[0]).LocalPath))throw new Exception("上一版本已移动或删除，无法回退。请恢复其目录。");}}
-   foreach(var e in j.Entries)using(var u=User((RegistryView)e.View)){Write(u,Key(e.Path),e.Before);if(!Same(Read(u,Key(e.Path)),e.Before))throw new Exception("回退回读失败，请保留部署记录并运行诊断");}j.State="rolled_back";Atomic(JournalPath,j);
+   foreach(var e in j.Entries)using(var u=User((RegistryView)e.View)){Write(u,Key(e.Path),e.Before);if(!Same(Read(u,Key(e.Path)),e.Before))throw new Exception("回退回读失败，请保留部署记录并运行诊断");}j.State="rolled_back";Atomic(JournalPath,j);Event("rollback.completed");
   }
-  static string Status(bool doctor){var sb=new StringBuilder();sb.AppendLine("PagePilot 管理器 0.4.0");sb.AppendLine("当前目录："+root);try{var view=WordView();string word=DetectWord();sb.AppendLine("Word："+FileVersionInfo.GetVersionInfo(word).FileVersion+" · "+(view==RegistryView.Registry64?"64":"32")+" 位");sb.AppendLine("注册路径："+(CodeBase(view)==""?"未启用":CodeBase(view)));using(var u=User(view))using(var k=u.OpenSubKey(Key(Addin)))sb.AppendLine("加载状态 LoadBehavior："+Convert.ToString(k?.GetValue("LoadBehavior")));}catch(Exception e){sb.AppendLine(e.Message);}try{ValidatePackage(doctor);sb.AppendLine(doctor?"完整文件校验通过":"关键文件校验通过");}catch(Exception e){sb.AppendLine("需要处理："+e.Message);}sb.AppendLine("配置与会话：%APPDATA%\\PagePilot");sb.AppendLine("本地规则、日志、文档备份：%LOCALAPPDATA%\\PagePilot");sb.AppendLine("启用、停用及回退不会删除这些用户数据。");if(Process.GetProcessesByName("WINWORD").Length>0)sb.AppendLine("Word 正在运行，关闭后才能切换版本。");if(doctor)sb.AppendLine("若 Word 已禁用加载项，请在 Word 加载项界面检查原因后手动恢复。管理器不修改 DisabledItems。");return sb.ToString();}
   static void SelfTest(){string originalData=data,originalRoot=root;testPrefix=@"Software\PagePilot\DeploymentTests\"+Guid.NewGuid().ToString("N")+@"\";data=Path.Combine(Path.GetTempPath(),"PagePilot-Deployment-"+Guid.NewGuid().ToString("N"));var view=RegistryView.Registry64;
    try{root=Path.Combine(data,"v1");Change("enable",view);string v1=CodeBase(view);root=Path.Combine(data,"v2");Change("enable",view);if(CodeBase(view)==v1)throw new Exception("Upgrade failed");Rollback();if(CodeBase(view)!=v1)throw new Exception("Rollback failed");try{Change("enable",view,true);throw new Exception("Failure injection missing");}catch(IOException){}if(CodeBase(view)!=v1)throw new Exception("Failed update rollback failed");root=Path.Combine(data,"v1");Change("disable",view);if(CodeBase(view)!="")throw new Exception("Disable failed");Rollback();if(CodeBase(view)!=v1)throw new Exception("Disable rollback failed");File.WriteAllText(Path.Combine(originalRoot,"manager-selftest.txt"),"PASS enable / upgrade / rollback / failure injection / disable / restore; isolated HKCU test subtree only");}
    finally{using(var u=User(view))u.DeleteSubKeyTree(testPrefix.TrimEnd('\\'),false);testPrefix="";data=originalData;root=originalRoot;}
   }
-  [STAThread]static int Main(string[] args){Application.EnableVisualStyles();try{
-   for(int i=0;i<args.Length;i++)if(args[i]=="--root"&&i+1<args.Length)root=Path.GetFullPath(args[++i]).TrimEnd(Path.DirectorySeparatorChar);
-   string command=args.Length>0?args[0].TrimStart('-','/').ToLowerInvariant():"ui";
-   if(command=="self-test"){SelfTest();return 0;}
-   if(command=="status"||command=="doctor"){string report=Status(command=="doctor");int output=Array.IndexOf(args,"--output");if(output>=0&&output+1<args.Length)File.WriteAllText(Path.GetFullPath(args[output+1]),report,new UTF8Encoding(false));else MessageBox.Show(report,"PagePilot · 状态");return 0;}
-   if(command=="enable"||command=="disable"){Change(command,WordView());return 0;}if(command=="rollback"){Rollback();return 0;}if(command!="ui")throw new Exception("支持 enable、disable、status、doctor、rollback、--root、--output。");
-   float scale;using(var graphics=Graphics.FromHwnd(IntPtr.Zero))scale=graphics.DpiX/96f;Func<int,int> px=value=>(int)(value*scale);
-   using(var form=new Form{Text="PagePilot · 版本与部署",Width=px(760),Height=px(560),MinimumSize=new Size(px(640),px(480)),Font=new Font("Microsoft YaHei UI",10),StartPosition=FormStartPosition.CenterScreen,AutoScaleMode=AutoScaleMode.None}){
-    var panel=new FlowLayoutPanel{Dock=DockStyle.Bottom,Height=px(112),Padding=new Padding(px(12)),AutoScroll=true};var report=new TextBox{Dock=DockStyle.Fill,Multiline=true,ReadOnly=true,ScrollBars=ScrollBars.Vertical,BorderStyle=BorderStyle.None,Text=Status(false)};var body=new Panel{Dock=DockStyle.Fill,Padding=new Padding(px(18))};body.Controls.Add(report);form.Controls.Add(body);form.Controls.Add(panel);form.Shown+=(s,e)=>{report.SelectionStart=0;report.SelectionLength=0;panel.Controls[0].Focus();};
-    Action<string,Func<string>> button=(label,action)=>{var b=new Button{Text=label,AutoSize=true,Height=px(38),Padding=new Padding(px(10),px(4),px(10),px(4)),Margin=new Padding(px(4))};b.Click+=async(s,e)=>{panel.Enabled=false;report.Text="正在处理，请稍候…";try{string result=await Task.Run(action);report.Text=result??Status(false);report.SelectionStart=0;report.SelectionLength=0;}catch(Exception ex){report.Text=Status(false);MessageBox.Show(form,ex.Message,"PagePilot",MessageBoxButtons.OK,MessageBoxIcon.Information);}finally{panel.Enabled=true;}};panel.Controls.Add(b);};
-    button("启用此版本",()=>{Change("enable",WordView());return null;});button("停用此版本",()=>{Change("disable",WordView());return null;});button("回退注册",()=>{Rollback();return null;});button("检查完整文件",()=>Status(true));
-    var choose=new Button{Text="选择版本目录",AutoSize=true,Padding=new Padding(px(10),px(4),px(10),px(4)),Margin=new Padding(px(4))};choose.Click+=(s,e)=>{using(var dialog=new FolderBrowserDialog{Description="选择已完整解压的 PagePilot 版本目录",SelectedPath=root})if(dialog.ShowDialog(form)==DialogResult.OK){root=Path.GetFullPath(dialog.SelectedPath).TrimEnd(Path.DirectorySeparatorChar);report.Text=Status(false);}};panel.Controls.Add(choose);Application.Run(form);
-   }return 0;
-  }catch(Exception e){string message=e.Message;int output=Array.IndexOf(args,"--output");if(output>=0&&output+1<args.Length)File.WriteAllText(Path.GetFullPath(args[output+1]),message);else MessageBox.Show(message,"PagePilot · 未完成",MessageBoxButtons.OK,MessageBoxIcon.Warning);return 1;}}
  }
 }

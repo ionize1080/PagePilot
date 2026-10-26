@@ -1,11 +1,7 @@
+﻿param([string]$Root = (Split-Path -Parent $PSScriptRoot))
 $ErrorActionPreference='Stop'
-# Only fixed PagePilot-owned registration keys are removed; settings/documents remain.
-$keys=@('Software\Classes\PagePilot.AiPane','Software\Classes\CLSID\{246818DC-B9A5-4328-9E71-69575A825B92}','Software\Microsoft\Office\Word\Addins\PagePilot.Connect',
- 'Software\Classes\PagePilot.Connect','Software\Classes\PagePilot.Pane',
- 'Software\Classes\CLSID\{0E057EBB-B35B-4A31-9B65-3DF44E8034CE}',
- 'Software\Classes\CLSID\{79CEEFC8-67F4-4F55-9475-24C0681BFBBD}')
-foreach($view in @([Microsoft.Win32.RegistryView]::Registry32,[Microsoft.Win32.RegistryView]::Registry64)) {
- $user=[Microsoft.Win32.RegistryKey]::OpenBaseKey([Microsoft.Win32.RegistryHive]::CurrentUser,$view)
- try {foreach($key in $keys){$user.DeleteSubKeyTree($key,$false)}}finally{$user.Dispose()}
-}
-Write-Output 'PagePilot disabled. Restart Word before moving or deleting the portable folder.'
+$manager=Join-Path ([IO.Path]::GetFullPath($Root)) 'PagePilot.Manager.exe'
+if (-not (Test-Path -LiteralPath $manager)) { throw 'Extract the complete portable package first.' }
+# Keep all deployment entry points on the same validated, logged transaction path.
+$process=Start-Process -FilePath $manager -ArgumentList @('disable', '--root', ('"'+$Root.TrimEnd('\')+'"')) -PassThru -Wait
+if ($process.ExitCode -ne 0) { throw 'PagePilot deployment did not complete. Open the manager for diagnostics.' }

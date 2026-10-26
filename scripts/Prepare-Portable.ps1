@@ -24,7 +24,7 @@ if($LASTEXITCODE -ne 0){throw 'Chatbox build dependency preparation failed'}
 & node (Join-Path $repo 'chatbox\prepare.cjs') $chatbox (Join-Path $dist 'Chatbox') (Join-Path $repo 'chatbox\node_modules')
 if($LASTEXITCODE -ne 0){throw 'Chatbox extraction failed'}
 foreach($name in @('bridge','vendor','scripts')) {Copy-Item (Join-Path $repo $name) $dist -Recurse -Force}
-foreach($name in @('Enable.cmd','Disable.cmd','README.md','LICENSE','THIRD-PARTY-NOTICES.md')) {Copy-Item (Join-Path $repo $name) $dist -Force}
+foreach($name in @('Enable.cmd','Disable.cmd','README.md','LICENSE','THIRD-PARTY-NOTICES.md','runtime.example.json')) {Copy-Item (Join-Path $repo $name) $dist -Force}
 Write-Output 'Portable runtime prepared. No installer was executed.'
 
 & $BuildPython (Join-Path $repo "scripts\Manifest.py") --root $dist

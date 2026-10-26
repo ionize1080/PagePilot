@@ -10,7 +10,7 @@ namespace PagePilot {
    // WordOpenXML includes unsaved edits, unlike copying the file on disk.
    string folder=Path.Combine(Connect.Data,"backups");Directory.CreateDirectory(folder);
    string name=Regex.Replace((string)doc.Name,@"[^\p{L}\p{N}._-]","_");
-   string path=Path.Combine(folder,DateTime.UtcNow.ToString("yyyyMMdd-HHmmss-fffffff")+"-"+name+".xml");File.WriteAllText(path,(string)doc.WordOpenXML);return path;
+   string path=Path.Combine(folder,DateTime.UtcNow.ToString("yyyyMMdd-HHmmss-fffffff")+"-"+name+".xml");File.WriteAllText(path,(string)doc.WordOpenXML);Connect.Log("document.backup.completed");return path;
   }
   internal static object Ascii(dynamic doc){Backup(doc);doc.Content.Font.NameAscii="Times New Roman";return new{formatted=true,preservedFontSizes=true};}
   internal static object Tables(dynamic doc,float margin){Backup(doc);int count=0;foreach(dynamic table in doc.Tables){table.Rows.Alignment=1;table.TopPadding=margin;table.BottomPadding=margin;table.LeftPadding=margin;table.RightPadding=margin;table.Borders.Enable=1;table.Borders.OutsideLineWidth=4;table.Borders.InsideLineWidth=4;count++;}return new{formattedTables=count};}

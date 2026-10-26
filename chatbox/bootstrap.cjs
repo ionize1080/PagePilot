@@ -1,9 +1,11 @@
 const {app,ipcMain,BrowserWindow,screen}=require('electron');
+require('./event-log.cjs').install(app);
 const path=require('node:path'),net=require('node:net');
 const root=process.env.PAGEPILOT_ROOT||path.resolve(__dirname,'..');
 const pipeName=process.env.PAGEPILOT_PIPE,token=process.env.PAGEPILOT_TOKEN;
 if(!/^PagePilot-[a-f0-9]{32}$/.test(pipeName||'')||!/^\w{64}$/.test(token||''))throw Error('请从 Word 的 PagePilot 打开助手。');
-app.setPath('userData',path.join(app.getPath('appData'),'PagePilot','Chatbox-1.20.3'));
+const profile=process.env.PAGEPILOT_PROFILE||path.join(app.getPath('appData'),'PagePilot');
+app.setPath('userData',path.join(profile,'Chatbox-1.20.3'));
 Object.defineProperty(app,'isPackaged',{get:()=>true});
 Object.defineProperty(process,'resourcesPath',{value:path.join(__dirname,'resources')});
 app.setAsDefaultProtocolClient=()=>false;
@@ -16,7 +18,7 @@ ipcMain.handle('pagepilot:command',async(event,action,args={})=>{
 });
 function inject(value){value=value||{};const servers=value.mcp?.servers||[];return {...value,autoUpdate:false,mcp:{...value.mcp,
  enabledBuiltinServers:value.mcp?.enabledBuiltinServers||[],servers:[...servers.filter(s=>s.id!=='pagepilot-word'),{
- id:'pagepilot-word',name:'PagePilot Word',enabled:true,transport:{type:'stdio',command:path.join(root,'Python','python.exe'),args:[path.join(root,'bridge','server.py')],env:{PAGEPILOT_ROOT:root,PAGEPILOT_PIPE:pipeName,PAGEPILOT_TOKEN:token,PYTHONIOENCODING:'utf-8'}}}]}};}
+ id:'pagepilot-word',name:'PagePilot Word',enabled:true,transport:{type:'stdio',command:path.join(root,'Python','python.exe'),args:[path.join(root,'bridge','server.py')],env:{PAGEPILOT_ROOT:root,PAGEPILOT_PIPE:pipeName,PAGEPILOT_TOKEN:token,PAGEPILOT_DATA:process.env.PAGEPILOT_DATA||'',PAGEPILOT_LOGS:process.env.PAGEPILOT_LOGS||'',PAGEPILOT_LOG_LEVEL:process.env.PAGEPILOT_LOG_LEVEL||'debug',PYTHONIOENCODING:'utf-8'}}}]}};}
 ipcMain.handle('pagepilot:context',async event=>{
  if(!primary||event.sender!==primary.webContents||event.senderFrame!==primary.webContents.mainFrame||!event.senderFrame.url.startsWith('file:'))throw Error('Invalid sender');
  const c=await host('identity');return c.document;

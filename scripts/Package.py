@@ -7,6 +7,7 @@ import zipfile
 parser=argparse.ArgumentParser()
 parser.add_argument('--output',required=True)
 parser.add_argument('--chatbox-source',required=True)
+parser.add_argument('--version',default='0.4.1')
 args=parser.parse_args()
 repo=Path(__file__).resolve().parents[1]
 out=Path(args.output).resolve()
@@ -16,7 +17,9 @@ def put_tree(z,folder,prefix):
     for p in sorted(folder.rglob('*')):
         if p.is_file() and not any(x in skip for x in p.relative_to(folder).parts):
             z.write(p,str(Path(prefix)/p.relative_to(folder)))
-portable=out/'PagePilot-0.4.0-rc.1-portable-win-x64.zip'
+version=args.version
+if not __import__('re').fullmatch(r'\d+\.\d+\.\d+(?:-[a-z0-9.]+)?',version):raise ValueError('Invalid release version')
+portable=out/f'PagePilot-{version}-portable-win-x64.zip'
 with zipfile.ZipFile(portable,'w',zipfile.ZIP_DEFLATED,compresslevel=6) as z:
     for name in ['PagePilot.dll','PagePilot.Manager.exe','manifest.sha256','Python','Browser','Chatbox','bridge','vendor']:
         p=repo/'dist'/name
@@ -29,11 +32,11 @@ with zipfile.ZipFile(portable,'w',zipfile.ZIP_DEFLATED,compresslevel=6) as z:
         else:z.write(p,'PagePilot/'+name)
     for name in ['scripts','docs']:
         put_tree(z,repo/name,'PagePilot/'+name)
-    for name in ['README.md','LICENSE','THIRD-PARTY-NOTICES.md','Enable.cmd','Disable.cmd','requirements-lock.txt']:
+    for name in ['README.md','LICENSE','THIRD-PARTY-NOTICES.md','Enable.cmd','Disable.cmd','requirements-lock.txt','runtime.example.json']:
         z.write(repo/name,'PagePilot/'+name)
-source=out/'PagePilot-0.4.0-rc.1-source.zip'
+source=out/f'PagePilot-{version}-source.zip'
 with zipfile.ZipFile(source,'w',zipfile.ZIP_DEFLATED,compresslevel=6) as z:
-    for name in ['manager','src','bridge','chatbox','vendor','scripts','tests','docs']:
+    for name in ['manager','src','shared','bridge','chatbox','vendor','scripts','tests','docs']:
         put_tree(z,repo/name,'PagePilot/'+name)
     for p in repo.iterdir():
         if p.is_file() and p.name!='.gitignore':z.write(p,'PagePilot/'+p.name)
@@ -43,4 +46,4 @@ for p in [portable,source]:
     digest=hashlib.file_digest(p.open('rb'),'sha256').hexdigest()
     hashes.append(digest+'  '+p.name)
     print(p.name,p.stat().st_size,digest)
-(out/'PagePilot-0.4.0-rc.1-SHA256SUMS.txt').write_text('\n'.join(hashes)+'\n',encoding='ascii')
+(out/f'PagePilot-{version}-SHA256SUMS.txt').write_text('\n'.join(hashes)+'\n',encoding='ascii')
