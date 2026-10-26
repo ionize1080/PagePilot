@@ -19,8 +19,8 @@ namespace PagePilot {
   };
   public static Regex Compile(string pattern, bool ignoreCase=false) => new Regex(pattern, RegexOptions.Multiline | (ignoreCase?RegexOptions.IgnoreCase:RegexOptions.None), TimeSpan.FromMilliseconds(500));
   public static int Level(string text,IEnumerable<HeadingRule> rules) {
-   text=text.Trim(); if(text.Length==0 || text.Length>60 || text.EndsWith("。") || Regex.IsMatch(text,@"^\d{4}[./-]\d{1,2}[./-]\d{1,2}"))return 0;
-   foreach(var r in rules) { if(r.Cached==null||r.CachedPattern!=r.Pattern){r.Cached=Compile(r.Pattern);r.CachedPattern=r.Pattern;} if(r.Cached.IsMatch(text)) return r.Level==0? Math.Min(9,new string(text.TakeWhile(c=>char.IsDigit(c)||c=='.').ToArray()).TrimEnd('.').Count(c=>c=='.')+1):Math.Max(1,Math.Min(9,r.Level)); }
+   text=text.Trim(); if(text.Length==0)return 0;
+   foreach(var r in rules) { if(r.Name!="自定义"&&(text.Length>60||text.EndsWith("。")||Regex.IsMatch(text,@"^\d{4}[./-]\d{1,2}[./-]\d{1,2}")))continue; if(r.Cached==null||r.CachedPattern!=r.Pattern){r.Cached=Compile(r.Pattern);r.CachedPattern=r.Pattern;} if(r.Cached.IsMatch(text)) return r.Level==0? Math.Min(9,new string(text.TakeWhile(c=>char.IsDigit(c)||c=='.').ToArray()).TrimEnd('.').Count(c=>c=='.')+1):Math.Max(1,Math.Min(9,r.Level)); }
    return 0;
   }
   public static List<Hit> Find(string text,int offset,string pattern,string replacement,bool ignoreCase,System.Threading.CancellationToken cancel=default(System.Threading.CancellationToken)) {

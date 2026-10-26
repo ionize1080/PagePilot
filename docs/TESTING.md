@@ -1,37 +1,41 @@
-# PagePilot 0.3.0 validation — 2026-10-23
+# PagePilot 0.4.0-rc.1 验证记录 — 2026-10-26
 
-Test host: physical Windows build 26300, Word 16 x64, Office14 PIA, .NET Framework 4.8.
-The user explicitly excluded the VM from this test run. Word 2010 x86/x64 has not been executed; fallback code and Office14 compilation are not target-machine certification.
+环境：物理机 Windows build 26300、Word 16.0.20430.20180 x64、200% DPI、Office14 PIA、.NET Framework 4.8。目标 Win10 21H1 / Word 2010 尚未实机验证；本机 Hyper-V 查询权限不足，不能替代目标机验证，因此发布为候选版。
 
-## Executed
+## 已执行
 
-- Release build passed. NU1900: vulnerability feed was unavailable; this is not a successful dependency vulnerability audit.
-- Core engine: 17 assertions, including 100,001 matches, regex timeout, boundaries, hierarchy false positives and trailing dot depth.
-- Actual DeepSeek model from the existing Chatbox configuration: inline navigation produced exactly the requested first-level headings at paragraph indices 1 and 5. No additional assistant window was launched. Cancel completed without applying results.
-- Document XML equality passed with automatic proofing excluded from the fixture (Word independently splits runs during grammar checking).
-- Actual Word regex: debounced search, single-click selection, capture/replacement, full batch undo, hyperlink-aware position mapping.
-- Complex Word fixture: nested TOC/PAGEREF fields, footnotes, endnotes and content controls. Seven matches map to exact visible character ranges without field delimiters. Visible geometry and unchanged text verified.
-- Actual on-screen review: yellow highlights on QA, amounts, dates and page-number results. Overlay does not alter formatting, save state or undo history.
-- Chatbox UI: six dock/window transitions retained editable Chinese drafts; top-only visible mode switch; aligned input toolbar; closing approval confirmation preserved manual mode; confirmation enabled red state; disabling restored manual.
-- Real Chatbox API numerical review returned 20% for 100 to 120. API keys remained in the existing user profile and were not logged or packaged.
-- 20-operation actual stdio MCP regression: formatting, spacing, page setup, tables/cells, comments, headers/footers, page numbers, hierarchy, revisions, diagnostics, PDF and save. COM readback assertions passed.
-- Object regression: footnote/endnote, content control insertion and update, TOC and field update, invalid operation rejection.
-- Additional regression: context paging, bound screenshot, ASCII NameAscii assignment preserving 13 pt size, numbering-template reuse.
-- Final approval regression: closing confirmation and reentrant requests stayed manual; explicit enable succeeded; switching documents reset approval permanently for that session.
-- Capability matrix: 129 total tools including all 120 upstream tools, simulated Word 14/16 and protected/no-document states.
-- JavaScript syntax, Python compilation and git whitespace checks.
+- 加载项与管理器 Release 编译通过；17 项核心测试通过，100,001 匹配约 126 ms。NuGet 漏洞数据源不可用，未将依赖漏洞审计记为通过。
+- 对照 v0.3.0 实际工具目录：原 129 个 inputSchema 和 readOnly 标记完全保留，新总数 132，包含全部 120 上游工具。模拟 Word 14/16、无文档和受保护文档能力矩阵通过。
+- 真实 Word 对象回归通过：建表、物理单元格文本/拆分/对齐/内边距，行列增删/尺寸/重复标题、逐边边框；任意折叠位置分节、首页页眉、页边距、分栏；域锁定/更新、复选框、下拉框、脚注、公式线性化/重建/既有表达式修改、文本框、书签、自定义样式、图片尺寸/替换、图表标题/系列数据、目录参数/更新。
+- 纯格式变化使旧句柄失效；未知属性在写入前拒绝；Word 拒绝不适用的操作时返回 not_applied 并验证撤销；保护/兼容模式条件提前报告。公式回读按 Unicode NFKC 处理 Word 的数学字母，避免把数学斜体字符误当作内容丢失。
+- 真实 stdio MCP：工具发现、版本能力、对象 schema/枚举、界面手动批准、插入并回读、错误文档拒绝通过。测试只修改新建的合成文档。
+- 审批取消、重入、明确启用及文档切换重置通过。实际审批界面已检查并改善初始焦点与留白。
+- 1,000 段 / 100 标题：分批目录结果正确，侧栏先返回；固定原选区、修改替换词、批量替换和单步撤销通过。
+- 管理器隔离注册测试通过：启用、升级、回退、注入写入失败后恢复、停用和恢复。完整运行文件清单校验通过。真实含空格目录切换后 Word 加载成功，连接阶段 120 ms；Word 启动加创建/保存合成文档共约 2.94 s。实际 Word 功能区、导航侧栏及 Electron 设置入口已用 Computer Use 检查；完成真实回退并恢复到测试前的 0.3.0 注册。
+- Computer Use：检查正则侧栏；Electron 设置的外观、阅读导航、输入、关闭重开保留草稿、保存反馈；高 DPI 管理器布局。发现并修正窗口复用交互和管理器按钮截断问题。设置保持 Electron。620 / 880 像素渲染布局检查通过，窄窗口已用 Computer Use 复查，另修正侧边导航文字换行。
 
-## Reproduce
+## 性能
 
-Build with build.ps1, then build tests/PhysicalIntegration.csproj. Copy the freshly built PagePilot.dll beside the test executable to avoid same-version assembly-cache reuse. The test uses the existing model configuration and only its new synthetic document. tests/ComplexSearch.csproj takes a disposable DOCX containing fields and controls. tests/operations.py and tests/objects_live.py require the named synthetic QA fixture and explicit automatic approval.
+原始聚合与样本见 `performance-0.4.0.json`。时间均为本机测试，不是目标机承诺。
 
-The Electron tests are staging-only injections; the release bootstrap must equal chatbox/bootstrap.cjs. No debugger port or test injection is shipped.
+| 项目 | 样本 | 结果 |
+|---|---:|---|
+| 1,000 段文档轻量身份查询 | 30 | P50 3.0 ms，P95 13.1 ms |
+| 首次目录侧栏返回 / 完整目录 | 1 | 约 483 ms / 8.0 s；完整扫描仍需时间 |
+| 更换替换词的预览计算 | 30 | P95 <1 ms（合成选区，复用快照） |
+| Electron 设置首次可交互 | 1 | 583 ms |
+| 设置隐藏后重开，等待页面绘制回执 | 30 | P50 18.1 ms，P95 27.0 ms |
+| AI 全新进程：窗口显示 | 10 | P50 1.84 s，P95 2.07 s |
+| AI 全新进程：输入框出现 | 10 | P50 2.10 s，P95 2.46 s |
+| AI 全新进程：MCP 服务准备 | 10 | P50 4.01 s，P95 4.49 s |
+| MCP inventory，旧 / 新交替运行 | 各 30 | P50 2.31 / 2.24 s，P95 3.09 / 2.87 s |
 
-## Practical limits
+“AI 全新进程”不等于重启电脑后的磁盘冷缓存；系统缓存未清空。input_ready 测量输入控件出现，不是模型首 token。MCP ready 为服务完成初始化并准备进入 stdio 循环的标记，不是首个业务工具耗时。10 次样本的 P95 按最近秩法为最大值。旧身份路径扫描 1,000 段的跨进程测试 P50 43.3 s / P95 54.8 s，但受其他测试负载和 COM 跨进程开销影响，只用于证明多余全篇读取的成本，不作为生产内进程加速倍数宣传。
 
-- The regex engine remains .NET with its existing capture/replacement semantics and a 500 ms per-match timeout. A cancellation token stops superseded work; one million results is the memory protection limit.
-- Highlights cover the active visible main-story viewport, with a 600-rectangle / 35 ms paint-work budget. Complex wrapping and unusual Word views depend on Word's GetPoint geometry.
-- Complex nested fields may require character-by-character COM mapping. The 100,001-match microbenchmark measures matching only, not Word extraction or field mapping.
-- Idle same-length document changes are detected approximately every 5.4 seconds; length changes are detected sooner. Every navigation/replacement verifies current content.
-- Inline AI uses the selected HTTPS OpenAI-compatible chat-completions provider. Other provider protocols remain available through the full assistant. Batches preserve original paragraph indices; cross-batch hierarchy consistency remains model-dependent.
-- Persistent scroll/highlight overlays are not written into the document. The overlay is hidden when Word loses foreground focus or the pane is closed.
+编译缓存 A/B 未显示稳定收益，未纳入发布。知识库初始化日志约 22 ms，不把延迟知识库当作主要提速来源。MCP 轻量模块加载仅带来有限差异，不能声称数量级提升。
+
+## 复现与边界
+
+`tests/CoreTests.csproj`、`ObjectRegression.csproj`、`StartupRegression.csproj`、`ApprovalRegression.csproj`；`tests/capabilities.py`、`benchmark_mcp.py` 和 `object_stdio.py`。StartupRegression 的会话文件包含测试令牌，仅保存在被忽略的 .temp，不进入发布包。测试运行时会创建自己的 Word 文档；不要把测试输出的绝对路径或会话日志当作发布材料。
+
+使用 Office 2010 PIA 编译和模拟版本矩阵不等于 Word 2010 实机通过。Word 32 位、旧系统、混合 DPI、多进程复杂嵌套结构仍需目标环境验收。OLE 内部编辑、所有图表/公式节点属性、原生文档比较未覆盖。全部上游接口保留不表示逐一认证其所有边界。未加入数字一致性核对等业务功能。

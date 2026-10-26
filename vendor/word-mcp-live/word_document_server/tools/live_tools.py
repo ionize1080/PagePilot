@@ -2027,6 +2027,14 @@ async def word_live_insert_image(
 
         # Alignment map
         ALIGN_MAP = {"left": 0, "center": 1, "right": 2}
+        # Validate every option before AddPicture (failure must not insert anything).
+        import math, re
+        if border_style is not None and border_style.lower() not in BORDER_STYLES:
+            return json.dumps({"error": "Unknown border_style"})
+        if border_color is not None and not re.fullmatch(r"#?[0-9a-fA-F]{6}", border_color):
+            return json.dumps({"error": "border_color must be #RRGGBB"})
+        if any(v is not None and (not math.isfinite(float(v)) or float(v) <= 0) for v in (final_w, final_h, border_width_pt)):
+            return json.dumps({"error": "Image sizes and border width must be finite positive numbers"})
 
         with undo_record(app, "MCP: Insert Image"):
             inline_shape = rng.InlineShapes.AddPicture(
@@ -2184,19 +2192,19 @@ async def word_live_insert_cross_reference(
         "bookmark": 2,       # wdRefTypeBookmark
         "footnote": 3,       # wdRefTypeFootnote
         "endnote": 4,        # wdRefTypeEndnote
-        "figure": 10,        # wdRefTypeFigure (SEQ Figure)
-        "table": 11,         # wdRefTypeTable (SEQ Table)
-        "equation": 12,      # wdRefTypeEquation
+        "figure": -1,        # wdRefTypeFigure (SEQ Figure)
+        "table": -2,         # wdRefTypeTable (SEQ Table)
+        "equation": -3,      # wdRefTypeEquation
     }
 
     # Map ref_kind to Word constants (wdReferenceKind)
     ref_kind_map = {
-        "text": 0,                 # wdContentText
-        "number": 1,               # wdNumberFullContext
-        "number_no_context": 2,    # wdNumberNoContext
-        "number_relative": 3,      # wdNumberRelativeContext
+        "text": -1,                # wdContentText
+        "number": -4,              # wdNumberFullContext
+        "number_no_context": -3,   # wdNumberNoContext
+        "number_relative": -2,     # wdNumberRelativeContext
         "page": 7,                 # wdPageNumber
-        "above_below": 6,          # wdAboveBelow
+        "above_below": 15,         # wdPosition
     }
 
     ref_type_lower = ref_type.lower()

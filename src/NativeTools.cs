@@ -6,11 +6,11 @@ using System.Linq;
 using System.Text.RegularExpressions;
 namespace PagePilot {
  internal static class NativeTools {
-  internal static void Backup(dynamic doc){
+  internal static string Backup(dynamic doc){
    // WordOpenXML includes unsaved edits, unlike copying the file on disk.
    string folder=Path.Combine(Connect.Data,"backups");Directory.CreateDirectory(folder);
    string name=Regex.Replace((string)doc.Name,@"[^\p{L}\p{N}._-]","_");
-   File.WriteAllText(Path.Combine(folder,DateTime.UtcNow.ToString("yyyyMMdd-HHmmss-fffffff")+"-"+name+".xml"),(string)doc.WordOpenXML);
+   string path=Path.Combine(folder,DateTime.UtcNow.ToString("yyyyMMdd-HHmmss-fffffff")+"-"+name+".xml");File.WriteAllText(path,(string)doc.WordOpenXML);return path;
   }
   internal static object Ascii(dynamic doc){Backup(doc);doc.Content.Font.NameAscii="Times New Roman";return new{formatted=true,preservedFontSizes=true};}
   internal static object Tables(dynamic doc,float margin){Backup(doc);int count=0;foreach(dynamic table in doc.Tables){table.Rows.Alignment=1;table.TopPadding=margin;table.BottomPadding=margin;table.LeftPadding=margin;table.RightPadding=margin;table.Borders.Enable=1;table.Borders.OutsideLineWidth=4;table.Borders.InsideLineWidth=4;count++;}return new{formattedTables=count};}
@@ -22,6 +22,9 @@ namespace PagePilot {
    if(name=="pagepilot_context")return host.Context();
    // Bind mutations to the explicit full name returned by context.
    if(S(a,"document")!=(string)doc.FullName)throw new Exception("活动文档与请求不一致，请重新读取上下文。");
+   if(name=="pagepilot_objects")return ObjectTools.Inspect(doc,a);
+   if(name=="pagepilot_object_edit")return ObjectTools.Edit(doc,a);
+   if(name=="pagepilot_object_create")return ObjectTools.Create(doc,a);
    if(name=="pagepilot_inspect_objects"){
     var fields=new List<object>();foreach(dynamic field in doc.Fields)fields.Add(new{code=(string)field.Code.Text,result=(string)field.Result.Text});
     var controls=new List<object>();foreach(dynamic c in doc.ContentControls)controls.Add(new{id=(string)c.ID,title=(string)c.Title,tag=(string)c.Tag,text=(string)c.Range.Text});

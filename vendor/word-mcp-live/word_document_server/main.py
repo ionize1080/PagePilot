@@ -16,25 +16,32 @@ load_dotenv()
 os.environ.setdefault('FASTMCP_LOG_LEVEL', 'INFO')
 from fastmcp import FastMCP
 from mcp.types import ToolAnnotations
-from word_document_server.tools import (
-    document_tools,
-    content_tools,
-    format_tools,
-    protection_tools,
-    footnote_tools,
-    extended_document_tools,
-    comment_tools,
-    comment_write_tools,
-    hyperlink_tools,
-    tracked_changes_tools,
-    live_tools,
-    live_read_tools,
-    live_layout_tools,
-    screen_capture_tools,
-    layout_tools,
-)
-from word_document_server.tools.content_tools import replace_paragraph_block_below_header_tool
-from word_document_server.tools.content_tools import replace_block_between_manual_anchors_tool
+# Tool schemas are declared below; implementations load only on first use.
+from importlib import import_module
+class _LazyModule:
+    def __init__(self, name): self._name = name
+    def __getattr__(self, key):
+        return getattr(import_module('word_document_server.tools.' + self._name), key)
+document_tools = _LazyModule('document_tools')
+content_tools = _LazyModule('content_tools')
+format_tools = _LazyModule('format_tools')
+protection_tools = _LazyModule('protection_tools')
+footnote_tools = _LazyModule('footnote_tools')
+extended_document_tools = _LazyModule('extended_document_tools')
+comment_tools = _LazyModule('comment_tools')
+comment_write_tools = _LazyModule('comment_write_tools')
+hyperlink_tools = _LazyModule('hyperlink_tools')
+tracked_changes_tools = _LazyModule('tracked_changes_tools')
+live_tools = _LazyModule('live_tools')
+live_read_tools = _LazyModule('live_read_tools')
+live_layout_tools = _LazyModule('live_layout_tools')
+screen_capture_tools = _LazyModule('screen_capture_tools')
+layout_tools = _LazyModule('layout_tools')
+def replace_paragraph_block_below_header_tool(*args, **kwargs):
+    return content_tools.replace_paragraph_block_below_header_tool(*args, **kwargs)
+def replace_block_between_manual_anchors_tool(*args, **kwargs):
+    return content_tools.replace_block_between_manual_anchors_tool(*args, **kwargs)
+
 
 def get_transport_config():
     """
@@ -335,7 +342,7 @@ def register_tools():
             readOnlyHint=False,
             destructiveHint=False,
         ),
-        description=format_tools.format_text.__doc__,
+        description='Format text within a paragraph using python-docx (cross-platform, file-based).\nOnly supports: bold, italic, underline, color, font_size, font_name.\nDoes NOT support: highlight colors, styles, tracked changes.\nFor highlight/style changes, use word_live_format_text instead (Windows only).\n\nArgs:\n    filename: Path to the Word document (must not be open in Word).\n    paragraph_index: Index of the paragraph (0-based).\n    start_pos: Start position within the paragraph text.\n    end_pos: End position within the paragraph text.\n    bold: Set text bold (True/False).\n    italic: Set text italic (True/False).\n    underline: Set text underlined (True/False).\n    color: Text color — named ("red", "blue") or hex ("FF0000").\n    font_size: Font size in points.\n    font_name: Font name/family (e.g., "Arial").',
     )
     def format_text(filename: str, paragraph_index: int, start_pos: int, end_pos: int,
                    bold: bool = None, italic: bool = None, underline: bool = None,
@@ -839,7 +846,7 @@ def register_tools():
             title="Track Replace",
             destructiveHint=True,
         ),
-        description=tracked_changes_tools.track_replace.__doc__,
+        description='Replace text content with tracked changes (marks old as deleted, new as inserted).\nThis changes TEXT CONTENT only — it does not change formatting (font, highlight, style).\nTo change formatting, use word_live_format_text instead.\n\nArgs:\n    filename: Path to Word document.\n    old_text: Text to find and mark as deleted.\n    new_text: Replacement text to insert (must differ from old_text).\n    author: Author name for the tracked change.\n\nReturns:\n    JSON string with result',
     )
     def track_replace(filename: str, old_text: str, new_text: str, author: str = DEFAULT_AUTHOR):
         return tracked_changes_tools.track_replace(filename, old_text, new_text, author)
@@ -849,7 +856,7 @@ def register_tools():
             title="Track Insert",
             destructiveHint=True,
         ),
-        description=tracked_changes_tools.track_insert.__doc__,
+        description='Insert text content after a specific string, marked as a tracked insertion.\nThis changes TEXT CONTENT only — it does not change formatting.\n\nArgs:\n    filename: Path to Word document.\n    after_text: Text to search for; new text is inserted right after this.\n    insert_text: Text to insert.\n    author: Author name for the tracked change.\n\nReturns:\n    JSON string with result',
     )
     def track_insert(filename: str, after_text: str, insert_text: str, author: str = DEFAULT_AUTHOR):
         return tracked_changes_tools.track_insert(filename, after_text, insert_text, author)
@@ -859,7 +866,7 @@ def register_tools():
             title="Track Delete",
             destructiveHint=True,
         ),
-        description=tracked_changes_tools.track_delete.__doc__,
+        description='Mark text content as deleted (tracked deletion).\nThis changes TEXT CONTENT only — it does not change formatting.\n\nArgs:\n    filename: Path to Word document.\n    text: Text to mark as deleted.\n    author: Author name for the tracked change.\n\nReturns:\n    JSON string with result',
     )
     def track_delete(filename: str, text: str, author: str = DEFAULT_AUTHOR):
         return tracked_changes_tools.track_delete(filename, text, author)
@@ -934,7 +941,7 @@ def register_tools():
             title="Word Live Format Text",
             destructiveHint=True,
         ),
-        description=live_tools.word_live_format_text.__doc__,
+        description='[Windows only] Format text in an open Word document: font, color, highlight, style, alignment, page breaks.\nUse this tool for any visual/formatting change that does NOT alter the text content itself.\n\nTwo addressing modes (provide one):\n- start/end: Character positions (from word_live_find_text or word_live_get_page_text).\n- start_paragraph/end_paragraph: 1-indexed paragraph range (from word_live_get_text etc.).\n\nArgs:\n    filename: Document name or path (None = active document).\n    start: Start character position.\n    end: End character position.\n    start_paragraph: First paragraph index (1-indexed). Alternative to start/end.\n    end_paragraph: Last paragraph index (1-indexed, defaults to start_paragraph).\n    bold: Set bold (True/False).\n    italic: Set italic (True/False).\n    underline: Set underline (True/False).\n    strikethrough: Set strikethrough (True/False).\n    font_name: Font family (e.g., "Arial", "Times New Roman").\n    font_size: Font size in points (e.g., 12).\n    font_color: Text color as "#RRGGBB" hex (e.g., "#FF0000" for red).\n    highlight_color: Text highlight background color index.\n        0 = remove highlight, 1 = black, 2 = blue, 3 = turquoise,\n        4 = bright green, 5 = pink, 6 = red, 7 = yellow,\n        8 = white, 9 = dark blue, 10 = teal, 11 = green,\n        12 = violet, 13 = dark red, 14 = dark yellow, 15 = gray, 16 = light gray.\n        Common: 7=yellow (add), 0=none (remove).\n    style_name: Apply a named Word style (e.g., "Heading 1", "Normal").\n    paragraph_alignment: Paragraph alignment — "left" (0), "center" (1), "right" (2), "justify" (3).\n        Applies to ALL paragraphs in the selected range.\n    page_break_before: Set or clear PageBreakBefore on paragraphs in range (True/False).\n    preserve_direct_formatting: When True and style_name is set, saves font/size/bold/italic/\n        alignment/spacing before applying the style and restores them after. Useful for changing\n        a paragraph\'s style (e.g., Heading 5 → Normal) without losing its visual formatting.\n    track_changes: Track formatting changes as revisions.\n\nReturns:\n    JSON with result info.',
     )
     def word_live_format_text(
         filename: str = None,
@@ -969,7 +976,7 @@ def register_tools():
             title="Word Live Replace Text",
             destructiveHint=True,
         ),
-        description=live_tools.word_live_replace_text.__doc__,
+        description='[Windows only] Find and replace text in an open Word document.\n\nUses Word\'s native Find & Replace, which works across tracked change boundaries\n(unlike manual delete+insert). Supports Word special characters when use_wildcards=True:\n^m (manual page break), ^t (tab), ^p (paragraph mark), ^s (non-breaking space), and Word wildcard syntax.\n\nArgs:\n    filename: Document name or path (None = active document).\n    find_text: Text to find. With use_wildcards=True, supports ^m, ^t, ^p, ^s and Word wildcards.\n    replace_text: Replacement text. Use "" to delete matches.\n    match_case: Case-sensitive search.\n    match_whole_word: Match whole words only (ignored when use_wildcards=True).\n    use_wildcards: Enable Word wildcards and special characters.\n    replace_all: Replace all occurrences (True) or just the first one (False).\n    track_changes: Track replacements as revisions.\n\nReturns:\n    JSON with count of replacements made.',
     )
     def word_live_replace_text(
         filename: str = None,
@@ -991,7 +998,7 @@ def register_tools():
             title="Word Live Insert Paragraphs",
             destructiveHint=True,
         ),
-        description=live_tools.word_live_insert_paragraphs.__doc__,
+        description='[Windows only] Insert one or more paragraphs near a target paragraph in an open Word document.\n\nTargets by text match or paragraph index (0-based, matching word_live_get_text output).\nInserts all paragraphs in a single undo record.\n\nArgs:\n    filename: Document name or path (None = active document).\n    paragraphs: List of paragraph texts to insert. Each string becomes one Word paragraph.\n    target_text: Text to search for (first matching paragraph). Mutually exclusive with target_paragraph_index.\n    target_paragraph_index: 0-based paragraph index (as returned by word_live_get_text).\n    position: \'before\' or \'after\' the target paragraph (default \'after\').\n    style: Style name for inserted paragraphs. None = "Normal" (avoids inheriting heading styles).\n    track_changes: Track insertions as revisions.\n\nReturns:\n    JSON with result info including count of paragraphs inserted.',
     )
     def word_live_insert_paragraphs(
         filename: str = None,
@@ -1036,7 +1043,7 @@ def register_tools():
             title="Word Live Format Table",
             destructiveHint=True,
         ),
-        description=live_tools.word_live_format_table.__doc__,
+        description='Format a table in an open Word document via COM.\n\nSupports border removal, cell formatting, column sizing, and table alignment.\nUse table_index=-1 for the last table, 1 for the first, etc.\n\nArgs:\n    filename: Document name or path (None = active document).\n    table_index: 1-based table index, or -1 for the last table.\n    border_style: Border style for all edges: "none", "single", "double", "dotted",\n        "dashed", "thick". "none" removes all borders.\n    cell_bold: List of [row, col, bold] entries (1-indexed) to set bold on cell text.\n        Example: [[1, 1, true], [1, 2, true]] bolds row 1 cells.\n    cell_alignment: List of [row, col, alignment] entries. alignment: "left", "center",\n        "right", "justify". Row 0 = all rows, Col 0 = all cols.\n    column_widths: List of column widths in points (1-indexed order).\n        Example: [200, 200] sets col 1 to 200pt, col 2 to 200pt.\n    table_alignment: Table alignment on page: "left", "center", "right".\n    cell_shading: List of [row, col, color_hex] entries. color_hex as "#RRGGBB".\n        Row 0 = all rows. Example: [[1, 0, "#DDDDDD"]] shades entire row 1.\n    autofit: "window" (fit to page width), "content" (fit to cell content),\n        "fixed" (fixed column widths).\n\nReturns:\n    JSON with result info.',
     )
     def word_live_format_table(
         filename: str = None,
@@ -1059,7 +1066,7 @@ def register_tools():
             title="Word Live Modify Table",
             destructiveHint=True,
         ),
-        description=live_tools.word_live_modify_table.__doc__,
+        description="[Windows only] Modify a table in an open Word document.\n\nOperations: get_info, set_cell, set_row, set_range, add_column, delete_column,\nadd_row, delete_row, merge_cells, autofit, delete_table.\nAll row/col indices are 1-based (Word COM standard).\n\nArgs:\n    filename: Document name or path (None = active document).\n    table_index: 1-based table index (default 1).\n    operation: One of: get_info, set_cell, set_row, set_range, add_column,\n        delete_column, add_row, delete_row, merge_cells, autofit, delete_table.\n    row: Row index for set_cell, set_row, delete_row.\n    col: Column index for set_cell, delete_column.\n    text: Text for set_cell.\n    before_row: Insert row before this index (add_row). None = append at end.\n    before_col: Insert column before this index (add_column). None = append at end.\n    header: Header text for new column (add_column, placed in row 1).\n    cells: List of cell values for set_row (1D) or set_range (2D). None values skip that cell.\n        Also used for new row/column values (add_row, add_column).\n    start_row: Start row for merge_cells or set_range (default 1).\n    start_col: Start column for merge_cells or set_range (default 1).\n    end_row: End row for merge_cells.\n    end_col: End column for merge_cells.\n    autofit_mode: 'content', 'window', or 'fixed' (autofit operation).\n    accept_revisions: For set_cell/set_row/set_range — accept tracked changes before writing\n        (prevents layered text from old revisions persisting underneath new content).\n    track_changes: Track modifications as revisions.\n    scrub_orphans: For delete_table — scan the deletion site for orphan\n        cell-separator (\\x07) bytes and remove them. Default True.\n\nReturns:\n    JSON with operation result.",
     )
     def word_live_modify_table(
         filename: str = None,
@@ -1110,7 +1117,7 @@ def register_tools():
             title="Word Live Apply List",
             destructiveHint=True,
         ),
-        description=live_tools.word_live_apply_list.__doc__,
+        description='[Windows only] Apply or remove bullet/numbered/multilevel list formatting on paragraphs.\n\nArgs:\n    filename: Document name or path (None = active document).\n    start_paragraph: First paragraph to format (1-indexed, required).\n    end_paragraph: Last paragraph to format (1-indexed, defaults to start_paragraph).\n    list_type: "bullet", "number", or "multilevel" (outline numbered).\n    level: Indentation level (0 = first level, 1 = second level, etc.).\n        For multilevel, this sets the default list level for all paragraphs.\n        Use level_map instead for per-paragraph level control.\n    remove: If True, removes list formatting from the range.\n    continue_previous: If True, continues numbering from a previous list above.\n    number_format: (multilevel only) Dict mapping level (int) to format string.\n        Example: {1: "4.%1.", 2: "(%2)", 3: "(%3)"} → "4.1.", "(a)", "(i)"\n        Keys are 1-indexed levels. If not provided, defaults to {1: "%1.", 2: "%1.%2."}.\n    number_style: (multilevel only) Dict mapping level (int) to numbering style string.\n        Styles: "arabic" (1,2,3), "lowercase_letter" (a,b,c), "uppercase_letter" (A,B,C),\n        "lowercase_roman" (i,ii,iii), "uppercase_roman" (I,II,III).\n        Example: {1: "arabic", 2: "lowercase_letter", 3: "lowercase_roman"}\n        If a string is given instead of dict, applies same style to all levels.\n        Default: "arabic" for all levels.\n    start_at: (multilevel only) Dict mapping level (int) to starting number.\n        Example: {1: 5} → numbering starts at 5.\n        If not provided, starts at 1.\n    level_map: (multilevel only) Dict for per-paragraph list level. Two formats:\n        1) {para_index (int): level (int)} — numeric paragraph indices.\n        2) {heading_text (str): level (int)} — match by text, robust to index shifts.\n           Mac-only: when keys are heading texts, matching is case-insensitive with\n           apostrophe/whitespace normalization and supports startsWith fallback.\n        Paragraphs not in the map stay at level 1 (or value of `level + 1`).\n    track_changes: Track changes as revisions.\n    font_color: (Mac multilevel only) Override font color on list-formatted paragraphs.\n        Hex string like "#0D0D0D". Applied after list formatting to override Word\'s\n        blue heading defaults when list templates link to heading styles.\n\nReturns:\n    JSON with result info.',
     )
     def word_live_apply_list(
         filename: str = None,
@@ -1140,7 +1147,7 @@ def register_tools():
             title="Word Live Setup Heading Numbering",
             destructiveHint=True,
         ),
-        description=live_tools.word_live_setup_heading_numbering.__doc__,
+        description='[Windows only] Set up auto-numbered headings with multilevel list (1. / 1.1).\n\nCreates a multilevel list template linked to Heading 1 and Heading 2 styles.\nDefault formats: Level 1 = "%1." (produces "1."), Level 2 = "%1.%2" (produces "1.1").\nCustom formats supported — e.g., h1_number_format="MADDE %1 – " produces "MADDE 1 – ".\n\nApplies styles and numbering to the specified paragraphs, then optionally\nstrips manual number prefixes. Recognizes two patterns:\n- Numeric: "1. ", "6.2. ", "10.3 " (regex: ^\\d+(\\.\\d+)*\\.?\\s+)\n- MADDE: "MADDE 6 – ", "MADDE 10 - " (regex: ^MADDE\\s+\\d+\\s*[–-]\\s*)\n\nIf any style parameter is provided, Heading 1 and Heading 2 styles are\ncustomized before applying. If no style params are given, only numbering\nis applied (existing styles are preserved).\n\nArgs:\n    filename: Document name or path (None = active document).\n    h1_paragraphs: List of 1-indexed paragraph numbers for Heading 1 (main sections).\n    h2_paragraphs: List of 1-indexed paragraph numbers for Heading 2 (sub-sections).\n    strip_manual_numbers: Remove leading number/MADDE prefix from headings (default True).\n    h1_number_format: Custom Level 1 format (default "%1."). Use %1 for the number.\n        Example: "MADDE %1 – " produces "MADDE 1 – ", "MADDE 2 – ", etc.\n    h2_number_format: Custom Level 2 format (default "%1.%2"). Use %1 and %2.\n        Example: "%1.%2." produces "1.1.", "1.2.", etc.\n    font_name: Font family for both heading styles (e.g., "Cambria").\n    h1_size: Font size in points for Heading 1 (e.g., 13).\n    h2_size: Font size in points for Heading 2 (e.g., 11).\n    bold: Set bold on both heading styles (True/False).\n    alignment: Paragraph alignment — "left", "center", "right", "justify".\n    font_color: Text color as "#RRGGBB" hex (e.g., "#0D0D0D").\n    h1_space_before: Space before Heading 1 in points (e.g., 18).\n    h1_space_after: Space after Heading 1 in points (e.g., 6).\n    h2_space_before: Space before Heading 2 in points (e.g., 12).\n    h2_space_after: Space after Heading 2 in points (e.g., 6).\n    line_spacing: Line spacing in points for both heading styles (e.g., 13.8 for 1.15x).\n\nReturns:\n    JSON with h1_applied, h2_applied, and stripped counts.',
     )
     def word_live_setup_heading_numbering(
         filename: str = None,
@@ -1218,7 +1225,7 @@ def register_tools():
             title="Word Live Get Paragraph Format",
             readOnlyHint=True,
         ),
-        description=live_read_tools.word_live_get_paragraph_format.__doc__,
+        description='[Windows only] Inspect paragraph formatting properties for diagnostics.\n\nReturns detailed formatting info for each paragraph in the range. Essential for\ndebugging layout issues like unexpected page breaks (caused by keep_with_next chains),\nbroken list formatting, wrong styles, or inconsistent fonts.\n\nPer-paragraph fields returned: index, text_preview (first 80 chars), char_start, char_end,\nstyle, font_name, font_size, bold, italic, alignment, space_before_pt, space_after_pt,\nline_spacing, line_spacing_rule, page_break_before, keep_with_next, keep_together.\nAlso: list_type, list_level, list_string (if paragraph is in a list), highlight_color.\n\nWhen include_runs=True, each paragraph also includes a "runs" array with per-run\nformatting: text, bold, italic, font_name, font_size. Consecutive words with identical\nformatting are grouped into a single run. Useful for detecting which specific words\nare bold/italic (e.g., bold sub-clause numbers in otherwise normal text).\n\nArgs:\n    filename: Document name or path (None = active document).\n    start_paragraph: First paragraph (1-indexed, required).\n    end_paragraph: Last paragraph (1-indexed, defaults to start_paragraph).\n    include_runs: Include per-run (word-level) formatting detail (default False).\n\nReturns:\n    JSON with formatting details per paragraph.',
     )
     def word_live_get_paragraph_format(
         filename: str = None,
@@ -1245,7 +1252,7 @@ def register_tools():
             title="Word Live Set Core Properties",
             destructiveHint=True,
         ),
-        description=live_read_tools.word_live_set_core_properties.__doc__,
+        description='[Windows only] Set Word document core/built-in properties (Title, Subject, Author, etc.).\n\nEquivalent to File > Info > Properties in the Word UI. Pass None for any\nfield to leave it unchanged. Wrapped in undo_record so a single Ctrl+Z\nreverts every property in the call.\n\nArgs:\n    filename: Document name or path (None = active document).\n    title: Document Title.\n    subject: Document Subject.\n    author: Author (current author / "Created by").\n    keywords: Keywords (semicolon-separated by Word convention).\n    comments: Free-form Comments.\n    category: Category.\n    manager: Manager.\n    company: Company.\n    last_author: "Last Author" (Last saved by).\n\nReturns:\n    JSON {ok, document, changed: {field: {old, new}}, errors: {field: msg}}.',
     )
     def word_live_set_core_properties(
         filename: str = None,
@@ -1438,7 +1445,7 @@ def register_tools():
             title="Word Live Get Page Text",
             readOnlyHint=True,
         ),
-        description=live_read_tools.word_live_get_page_text.__doc__,
+        description="[Windows only] Get text from specific page(s) of an open Word document.\n\nReturns paragraphs on the requested page(s) with char_start/char_end offsets\nthat can be passed directly to word_live_format_text, word_live_delete_text, etc.\n\nUses Word's GoTo API to find page boundaries. For long legal documents, this\nis much more efficient than reading all paragraphs.\n\nArgs:\n    filename: Document name or path (None = active document).\n    page: Page number to read (1-indexed, required).\n    end_page: Last page to read (inclusive). If None, reads only `page`.\n\nReturns:\n    JSON with paragraphs list, each containing index, text, char_start, char_end.",
     )
     def word_live_get_page_text(
         filename: str = None,
@@ -1507,7 +1514,7 @@ def register_tools():
             title="Word Live Insert Image",
             destructiveHint=True,
         ),
-        description=live_tools.word_live_insert_image.__doc__,
+        description='Insert an image into an open Word document.\n\nThe image can be placed at a specific paragraph, at the start or end,\nor at a character offset position.\n\nArgs:\n    filename: Document name or path (None = active document).\n    image_path: Full path to the image file (PNG, JPG, BMP, etc.).\n    paragraph_index: 1-indexed paragraph to insert before (image goes before the paragraph).\n    position: "start", "end", or character offset as string. Only used if paragraph_index is None.\n    width_inches: Optional width in inches (aspect ratio maintained if only one dimension given).\n    height_inches: Optional height in inches.\n    width_pt: Optional width in points (1 inch = 72 pt). Overrides width_inches if both given.\n    height_pt: Optional height in points. Overrides height_inches if both given.\n    alignment: Paragraph alignment for the image: "left", "center", "right". Default: unchanged.\n    wrapping: Text wrapping style: "inline" (default), "square", "tight", "behind",\n        "infront", "topbottom". Non-inline converts to a floating Shape.\n    border_style: Border style around the image: "single", "double", "dotted", "dashed",\n        "thick", "none". Default: no border.\n    border_width_pt: Border line width in points (e.g. 1.0, 2.0). Default: 1.0.\n    border_color: Border color as "#RRGGBB" hex string. Default: black (#000000).\n    link_to_file: If True, links to the file instead of embedding it.\n\nReturns:\n    JSON with image insertion result.',
     )
     def word_live_insert_image(
         filename: str = None,
@@ -1601,7 +1608,7 @@ def register_tools():
             title="Word Live Diagnose Layout",
             readOnlyHint=True,
         ),
-        description=live_read_tools.word_live_diagnose_layout.__doc__,
+        description='[Windows only] Scan an open Word document for common layout problems.\n\nPerforms a single-pass scan of all paragraphs and reports issues that cause\nunexpected layout behavior (empty pages, content pushed to wrong page, etc.).\n\nChecks performed:\n1. keep_with_next chains: 5+ consecutive paragraphs with keep_with_next=true\n   push content to the next page as a block (severity: high).\n2. Heading styles on body text: Heading style on paragraphs >100 chars (medium).\n3. PageBreakBefore on non-headings: may cause unexpected blank space (medium).\n4. Manual page break count: ^m characters found via Find (info).\n5. Style summary: count of paragraphs per style, flags if >50% use Heading styles.\n\nArgs:\n    filename: Document name or path (None = active document).\n\nReturns:\n    JSON with issues array, style_summary dict, and issue_count.',
     )
     def word_live_diagnose_layout(filename: str = None):
         return live_read_tools.word_live_diagnose_layout(filename)

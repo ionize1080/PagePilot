@@ -6,11 +6,11 @@ spec=importlib.util.spec_from_file_location('bridge',Path(__file__).resolve().pa
 bridge=importlib.util.module_from_spec(spec);spec.loader.exec_module(bridge)
 async def main():
     for major,opened,protected in [(14,True,False),(16,True,False),(16,False,False),(16,True,True)]:
-        environment=dict(wordVersion=str(major),majorVersion=major,documentOpen=opened,protectedDocument=protected)
+        environment=dict(wordVersion=str(major),majorVersion=major,documentOpen=opened,protectedDocument=protected,compatibilityMode=14 if major==14 else 15)
         bridge.host=lambda action,**kw:environment
         result=await bridge.pagepilot_capabilities()
         catalog={t['name']:t for t in result['tools']}
-        assert len(catalog)==129
+        assert len(catalog)==132
         assert catalog['add_digital_signature']['status']=='limited'
         if major==14:
             assert all(catalog[n]['status']=='unavailable' for n in ['word_live_reply_to_comment','word_live_resolve_comment'])

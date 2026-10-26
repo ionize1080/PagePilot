@@ -134,12 +134,18 @@ def find_document(app, filename: str = None):
         if os.path.isabs(filename) else None
     )
 
+    matches = []
     for i in range(1, app.Documents.Count + 1):
         doc = app.Documents(i)
-        if unicodedata.normalize('NFC', doc.Name).lower() == target_basename:
-            return doc
-        if target_fullpath and unicodedata.normalize('NFC', os.path.normpath(doc.FullName)).lower() == target_fullpath:
-            return doc
+        if target_fullpath:
+            if unicodedata.normalize('NFC', os.path.normpath(doc.FullName)).lower() == target_fullpath:
+                matches.append(doc)
+        elif unicodedata.normalize('NFC', doc.Name).lower() == target_basename:
+            matches.append(doc)
+    if len(matches) == 1:
+        return matches[0]
+    if len(matches) > 1:
+        raise ValueError("Ambiguous document name; use its exact full path")
 
     open_docs = [app.Documents(i).Name for i in range(1, app.Documents.Count + 1)]
     raise ValueError(

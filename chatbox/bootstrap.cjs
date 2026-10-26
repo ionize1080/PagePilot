@@ -19,7 +19,7 @@ function inject(value){value=value||{};const servers=value.mcp?.servers||[];retu
  id:'pagepilot-word',name:'PagePilot Word',enabled:true,transport:{type:'stdio',command:path.join(root,'Python','python.exe'),args:[path.join(root,'bridge','server.py')],env:{PAGEPILOT_ROOT:root,PAGEPILOT_PIPE:pipeName,PAGEPILOT_TOKEN:token,PYTHONIOENCODING:'utf-8'}}}]}};}
 ipcMain.handle('pagepilot:context',async event=>{
  if(!primary||event.sender!==primary.webContents||event.senderFrame!==primary.webContents.mainFrame||!event.senderFrame.url.startsWith('file:'))throw Error('Invalid sender');
- const c=await host('context');return c.document?{path:c.document.path,name:c.document.name}:null;
+ const c=await host('identity');return c.document;
 });
 const original=ipcMain.handle.bind(ipcMain);
 ipcMain.handle=(channel,fn)=>{
@@ -29,11 +29,13 @@ ipcMain.handle=(channel,fn)=>{
  return original(channel,fn);
 };
 app.on('browser-window-created',(_,window)=>{
- if(primary)return;primary=window;window.setMinimumSize(320,240);
+ if(primary)return;primary=window;host("metric",{stage:"window_created"}).catch(()=>{});window.setMinimumSize(320,240);
+ window.hookWindowMessage(0x8047,()=>{if(window.isMinimized())window.restore();window.show();window.focus();});
  window.webContents.on('will-navigate',(e,url)=>{if(!url.startsWith('file:'))e.preventDefault();});
- window.once('ready-to-show',async()=>{try{const h=window.getNativeWindowHandle();const state=await host('ai_ready',{handle:(h.length===8?h.readBigUInt64LE():BigInt(h.readUInt32LE())).toString()});applyMode(state.mode);}catch(e){require('electron').dialog.showErrorBox('PagePilot',e.message);}});
+ window.once('ready-to-show',async()=>{host('metric',{stage:'window_visible'}).catch(()=>{});try{const h=window.getNativeWindowHandle();const state=await host('ai_ready',{handle:(h.length===8?h.readBigUInt64LE():BigInt(h.readUInt32LE())).toString()});applyMode(state.mode);}catch(e){require('electron').dialog.showErrorBox('PagePilot',e.message);}});
  window.on('closed',()=>app.exit(0));
 });
+let probingInput=false;const inputDeadline=Date.now()+120000;const inputProbe=setInterval(async()=>{if(Date.now()>inputDeadline){clearInterval(inputProbe);return;}if(probingInput||!primary||primary.isDestroyed())return;probingInput=true;try{if(await primary.webContents.executeJavaScript("!!document.querySelector('#message-input')")){clearInterval(inputProbe);await host('metric',{stage:'input_ready'});}}catch{}finally{probingInput=false;}},100);inputProbe.unref();
 require('./native/dist/main/main.js');
 let polling=false,missing=0;
 async function putPrompt(text){

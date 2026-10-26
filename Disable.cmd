@@ -1,3 +1,3 @@
 @echo off
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\Disable-PagePilot.ps1"
-pause
+"%~dp0PagePilot.Manager.exe" disable --root "%~dp0."
+exit /b %errorlevel%

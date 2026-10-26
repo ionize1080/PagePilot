@@ -1,51 +1,9 @@
-"""
-MCP tool implementations for the Word Document Server.
-
-This package contains the MCP tool implementations that expose functionality
-to clients through the Model Context Protocol.
-"""
-
-# Document tools
-from word_document_server.tools.document_tools import (
-    create_document, get_document_info, get_document_text, 
-    get_document_outline, list_available_documents, 
-    copy_document, merge_documents
-)
-
-# Content tools
-from word_document_server.tools.content_tools import (
-    add_heading, add_paragraph, add_table, add_picture,
-    add_page_break, add_table_of_contents, delete_paragraph,
-    search_and_replace
-)
-
-# Format tools
-from word_document_server.tools.format_tools import (
-    format_text, create_custom_style, format_table
-)
-
-# Protection tools
-from word_document_server.tools.protection_tools import (
-    protect_document, add_restricted_editing,
-    add_digital_signature, verify_document
-)
-
-# Footnote tools
-from word_document_server.tools.footnote_tools import (
-    add_footnote_to_document, add_endnote_to_document,
-    convert_footnotes_to_endnotes_in_document, customize_footnote_style
-)
-
-# Comment tools
-from word_document_server.tools.comment_tools import (
-    get_all_comments, get_comments_by_author, get_comments_for_paragraph
-)
-
-# Comment write tools
-from word_document_server.tools import comment_write_tools
-
-# Hyperlink tools
-from word_document_server.tools import hyperlink_tools
-
-# Tracked changes tools
-from word_document_server.tools import tracked_changes_tools
+"""Backward-compatible lazy exports."""
+from importlib import import_module
+_EXPORTS = {'create_document': ('word_document_server.tools.document_tools', 'create_document'), 'get_document_info': ('word_document_server.tools.document_tools', 'get_document_info'), 'get_document_text': ('word_document_server.tools.document_tools', 'get_document_text'), 'get_document_outline': ('word_document_server.tools.document_tools', 'get_document_outline'), 'list_available_documents': ('word_document_server.tools.document_tools', 'list_available_documents'), 'copy_document': ('word_document_server.tools.document_tools', 'copy_document'), 'merge_documents': ('word_document_server.tools.document_tools', 'merge_documents'), 'add_heading': ('word_document_server.tools.content_tools', 'add_heading'), 'add_paragraph': ('word_document_server.tools.content_tools', 'add_paragraph'), 'add_table': ('word_document_server.tools.content_tools', 'add_table'), 'add_picture': ('word_document_server.tools.content_tools', 'add_picture'), 'add_page_break': ('word_document_server.tools.content_tools', 'add_page_break'), 'add_table_of_contents': ('word_document_server.tools.content_tools', 'add_table_of_contents'), 'delete_paragraph': ('word_document_server.tools.content_tools', 'delete_paragraph'), 'search_and_replace': ('word_document_server.tools.content_tools', 'search_and_replace'), 'format_text': ('word_document_server.tools.format_tools', 'format_text'), 'create_custom_style': ('word_document_server.tools.format_tools', 'create_custom_style'), 'format_table': ('word_document_server.tools.format_tools', 'format_table'), 'protect_document': ('word_document_server.tools.protection_tools', 'protect_document'), 'add_restricted_editing': ('word_document_server.tools.protection_tools', 'add_restricted_editing'), 'add_digital_signature': ('word_document_server.tools.protection_tools', 'add_digital_signature'), 'verify_document': ('word_document_server.tools.protection_tools', 'verify_document'), 'add_footnote_to_document': ('word_document_server.tools.footnote_tools', 'add_footnote_to_document'), 'add_endnote_to_document': ('word_document_server.tools.footnote_tools', 'add_endnote_to_document'), 'convert_footnotes_to_endnotes_in_document': ('word_document_server.tools.footnote_tools', 'convert_footnotes_to_endnotes_in_document'), 'customize_footnote_style': ('word_document_server.tools.footnote_tools', 'customize_footnote_style'), 'get_all_comments': ('word_document_server.tools.comment_tools', 'get_all_comments'), 'get_comments_by_author': ('word_document_server.tools.comment_tools', 'get_comments_by_author'), 'get_comments_for_paragraph': ('word_document_server.tools.comment_tools', 'get_comments_for_paragraph'), 'comment_write_tools': ('word_document_server.tools', 'comment_write_tools'), 'hyperlink_tools': ('word_document_server.tools', 'hyperlink_tools'), 'tracked_changes_tools': ('word_document_server.tools', 'tracked_changes_tools')}
+def __getattr__(name):
+    if name not in _EXPORTS: raise AttributeError(name)
+    module, member = _EXPORTS[name]
+    value = import_module(module + "." + member) if member.endswith("_tools") else getattr(import_module(module), member)
+    globals()[name] = value
+    return value

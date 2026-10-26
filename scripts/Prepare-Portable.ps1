@@ -13,7 +13,7 @@ function Fetch-Pinned($Url,$Name,$Sha) {
 & (Join-Path $repo 'build.ps1') -OfficePiaPath $OfficePiaPath
 $py=Fetch-Pinned 'https://www.python.org/ftp/python/3.12.10/python-3.12.10-embed-amd64.zip' 'python.zip' '4ACBED6DD1C744B0376E3B1CF57CE906F9DC9E95E68824584C8099A63025A3C3'
 Expand-Archive -LiteralPath $py -DestinationPath (Join-Path $dist 'Python') -Force
-& $BuildPython -m pip install --only-binary=:all: --target (Join-Path $dist 'Python\Lib\site-packages') -r (Join-Path $repo 'requirements-lock.txt')
+& $BuildPython -m pip install --only-binary=:all: --platform win_amd64 --python-version 3.12 --implementation cp --abi cp312 --target (Join-Path $dist 'Python\Lib\site-packages') -r (Join-Path $repo 'requirements-lock.txt')
 if($LASTEXITCODE -ne 0){throw 'Python dependency preparation failed'}
 @('python312.zip','.','Lib\site-packages','import site') | Set-Content (Join-Path $dist 'Python\python312._pth') -Encoding ASCII
 $electron=Fetch-Pinned 'https://github.com/electron/electron/releases/download/v44.7.0/electron-v44.7.0-win32-x64.zip' 'electron.zip' 'EEE30DC8FA1F5EA95490E59F44E46EA68DD24C6E93D22FACF70FE5C2D4C2665C'
@@ -26,3 +26,6 @@ if($LASTEXITCODE -ne 0){throw 'Chatbox extraction failed'}
 foreach($name in @('bridge','vendor','scripts')) {Copy-Item (Join-Path $repo $name) $dist -Recurse -Force}
 foreach($name in @('Enable.cmd','Disable.cmd','README.md','LICENSE','THIRD-PARTY-NOTICES.md')) {Copy-Item (Join-Path $repo $name) $dist -Force}
 Write-Output 'Portable runtime prepared. No installer was executed.'
+
+& $BuildPython (Join-Path $repo "scripts\Manifest.py") --root $dist
+if($LASTEXITCODE -ne 0){throw "Integrity manifest failed"}
