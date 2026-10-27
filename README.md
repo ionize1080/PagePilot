@@ -2,21 +2,21 @@
 
 AI Powered Word 增强工具。面向 Windows 10 21H1、Word 2010 的原生桌面加载项，集成固定版本 Chatbox 1.20.3。
 
-当前版本：**0.4.1**。发布说明见 [0.4.1](docs/RELEASE-v0.4.1.md)。
+当前版本：**0.4.4**。修复 DeepSeek 兼容接口第二轮对话失败，包含请求头调整与支持机器级注册、强制替换、停用和回退的部署器。见 [发布说明](docs/RELEASE-v0.4.4.md)。
 
 ## 当前验证状态
 
-本机真实测试环境：Windows build 26300、Word 16.0.20430.20180、64 位。历史目标机日志确认旧版曾连接 Word 14.0，但 **0.4.1 的 Win10 / Word 2010 完整实机验收尚未完成，不能把本机测试当成目标环境测试。**详细记录见 `docs/TESTING.md`。代码通过 Office 2010 PIA 编译，避免将 Office 新版特性作为基本功能前提。
+本机真实测试环境：Windows build 26300、Word 16.0.20430.20180、64 位。用户已确认 0.4.3-test.1 在目标机管理员环境成功启用；**0.4.4 的完整 Word 2010 功能验收仍需目标机验证，不能把本机测试当成目标环境测试。**详细记录见 `docs/TESTING.md`。代码通过 Office 2010 PIA 编译，避免将 Office 新版特性作为基本功能前提。
 
 ## 使用
 
 1. 将完整便携压缩包解压到固定目录，例如 `D:\APP\PagePilot`。
-2. 关闭 Word，运行 `PagePilot.Manager.exe` 并选择“启用此版本”（`Enable.cmd` 也是同一 exe 的快捷入口，不依赖 PowerShell）。它仅注册当前用户的 COM 类和 Word 加载项；没有 MSI、ClickOnce 或安装向导，不创建“已安装的应用”条目。
+2. 关闭 Word，运行 `PagePilot.Manager.exe` 并选择“启用此版本”（`Enable.cmd` 也是同一 exe 的快捷入口，不依赖 PowerShell）。默认注册当前用户；管理员 Word 可改选“整台电脑（管理员环境，需管理员权限）”，以管理员身份启用机器级 COM 和 Word 加载项注册；没有 MSI、ClickOnce 或安装向导，不创建“已安装的应用”条目。
 3. 点击“启动 Word 并验证”，确认连接和功能区加载成功。再使用 **PagePilot** 选项卡中的正则替换、自动导航或 AI 助手。
 4. 在 Chatbox 原有设置中配置模型供应商与 API Key。密钥不包含在发布包中。
 5. 更新建议按版本解压到新目录，在新版管理器中启用；旧目录保留以便回退。停用也使用管理器，移动目录前先停用、移动后重新启用。详见 [部署与更新](docs/DEPLOYMENT.md)。
 
-这是准便携程序：Word 自动加载必须保留当前用户注册项；Chatbox 设置和会话保存在 `%APPDATA%\PagePilot`，本地规则和操作备份默认保存在 `%LOCALAPPDATA%\PagePilot`，日志默认保存在其 `logs` 子目录；可在管理器中自定义这些位置。不会修改其他加载项或创建系统启动任务。卸载列表中没有条目，不代表系统或管理工具无法检测进程和文件。
+这是准便携程序：Word 自动加载必须保留所选范围的注册项；机器级回退记录存放于 `%ProgramData%\PagePilot.Deployment`，仅管理员和 SYSTEM 可写；Chatbox 设置和会话保存在 `%APPDATA%\PagePilot`，本地规则和操作备份默认保存在 `%LOCALAPPDATA%\PagePilot`，日志默认保存在其 `logs` 子目录；可在管理器中自定义这些位置。不会修改其他加载项或创建系统启动任务。卸载列表中没有条目，不代表系统或管理工具无法检测进程和文件。
 
 ## 0.4.1 部署与诊断
 

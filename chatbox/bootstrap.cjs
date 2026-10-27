@@ -1,5 +1,7 @@
 const {app,ipcMain,BrowserWindow,screen}=require('electron');
+const requestUserAgent=require('./network-identity.cjs').install(app,require('./native/package.json').version);
 require('./event-log.cjs').install(app);
+require('./event-log.cjs').log('network.identity',requestUserAgent);
 const path=require('node:path'),net=require('node:net');
 const root=process.env.PAGEPILOT_ROOT||path.resolve(__dirname,'..');
 const pipeName=process.env.PAGEPILOT_PIPE,token=process.env.PAGEPILOT_TOKEN;

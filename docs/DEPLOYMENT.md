@@ -1,10 +1,16 @@
+当前正式版 0.4.4 已包含以下机器级部署与替换功能，见 [发布说明](RELEASE-v0.4.4.md)。
+
+0.4.3-test.1 可直接勾选“替换旧注册”，备份并移除当前账户与机器级的旧 PagePilot 注册后启用新版本，无需旧版管理器。参见 [覆盖迁移说明](RELEASE-v0.4.3-test.1.md)。
+
 # 半便携部署与更新
+
+0.4.2-test.1 增加管理员环境机器级部署，操作与迁移步骤见 [测试说明](RELEASE-v0.4.2-test.1.md)。默认仍为当前用户；机器级启用、停用与回退均需管理员权限。
 
 运行环境为 64 位 Windows、桌面 Word 和 .NET Framework 4.8。加载项采用 Office 2010 PIA / AnyCPU；Python 与 Electron 随包提供。目标机不需要 PowerShell、Python、Node、.NET SDK 或 VSTO Runtime。
 
 ## 首次启用
 
-1. 完整解压便携包到固定的新目录，例如 `D:\Apps\PagePilot\0.4.1`。
+1. 完整解压便携包到固定的新目录，例如 `D:\Apps\PagePilot\0.4.4`。
 2. 用平时运行 Word 的 Windows 账户打开 `PagePilot.Manager.exe`，通常无需管理员权限。
 3. 点击“启用此版本”。Word 正在运行时，可请求正常关闭并处理保存提示；无响应时可确认强制关闭后继续。强制关闭会丢失未保存修改，只处理当前账户、当前桌面会话的 Word。
 4. 点击“启动 Word 并验证”。只有当前版本同时完成连接和功能区加载才显示“已验证”。注册成功本身不代表已经加载。
@@ -12,7 +18,7 @@
 
 `Enable.cmd`、`Disable.cmd` 直接调用同一部署器，不依赖 PowerShell。旧 PowerShell 辅助脚本也委托管理器，统一使用相同校验、事务和日志。
 
-管理器根据实际 WINWORD.EXE 架构选择 32/64 位注册视图，只写当前用户 PagePilot COM 类和 Word 加载项。它不创建服务、开机启动项、GAC、MSI 或 PATH 项，不清空 Office 禁用列表。
+管理器根据实际 WINWORD.EXE 架构选择 32/64 位注册视图，按所选范围写入当前用户（HKCU）或整台电脑（HKLM）的 PagePilot COM 类和 Word 加载项。它不创建服务、开机启动项、GAC、MSI 或 PATH 项，不清空 Office 禁用列表。
 
 ## 更新与存储
 
@@ -41,7 +47,7 @@
 点击“诊断详情”查看完整检查并导出诊断包；侧边栏和诊断页均有“打开日志文件夹”。验证超时后 Word 保持打开，可处理首次启动提示、检查 COM 加载项和禁用项目。以其他管理员账户启动不会替平时用户注册加载项。
 
 ```text
-PagePilot.Manager.exe enable --root "D:\Apps\PagePilot\0.4.1" --verify
+PagePilot.Manager.exe enable --root "D:\Apps\PagePilot\0.4.4" --verify
 PagePilot.Manager.exe enable --config "D:\PagePilotData\runtime.json"
 PagePilot.Manager.exe doctor --output "D:\PagePilotData\diagnostic.txt"
 PagePilot.Manager.exe export-diagnostics --output "D:\PagePilotData\diagnostic.zip"

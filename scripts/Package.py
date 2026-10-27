@@ -7,7 +7,7 @@ import zipfile
 parser=argparse.ArgumentParser()
 parser.add_argument('--output',required=True)
 parser.add_argument('--chatbox-source',required=True)
-parser.add_argument('--version',default='0.4.1')
+parser.add_argument('--version',default='0.4.4')
 args=parser.parse_args()
 repo=Path(__file__).resolve().parents[1]
 out=Path(args.output).resolve()
@@ -32,7 +32,7 @@ with zipfile.ZipFile(portable,'w',zipfile.ZIP_DEFLATED,compresslevel=6) as z:
         else:z.write(p,'PagePilot/'+name)
     for name in ['scripts','docs']:
         put_tree(z,repo/name,'PagePilot/'+name)
-    for name in ['README.md','LICENSE','THIRD-PARTY-NOTICES.md','Enable.cmd','Disable.cmd','requirements-lock.txt','runtime.example.json']:
+    for name in ['README.md','LICENSE','THIRD-PARTY-NOTICES.md','Enable.cmd','Disable.cmd','Enable-Machine.cmd','Disable-Machine.cmd','Rollback-Machine.cmd','Manager-Machine.cmd','Replace-Machine.cmd','requirements-lock.txt','runtime.example.json']:
         z.write(repo/name,'PagePilot/'+name)
 source=out/f'PagePilot-{version}-source.zip'
 with zipfile.ZipFile(source,'w',zipfile.ZIP_DEFLATED,compresslevel=6) as z:

@@ -148,7 +148,7 @@ namespace PagePilot {
    if(action=="ping"){
     bool forAI=req.ContainsKey("role")&&Convert.ToString(req["role"])=="ai";bool activate=forAI&&pendingAI,provider=forAI&&pendingProvider;string prompt=forAI?pendingPrompt:null;
     if(forAI){pendingAI=false;pendingProvider=false;pendingPrompt=null;}
-    return new{version="0.4.0",activate,provider,prompt,state=ApprovalState()};
+    return new{version=typeof(Connect).Assembly.GetName().Version.ToString(3),activate,provider,prompt,state=ApprovalState()};
    }
    if(action=="ai_ready"){try{App.StatusBar=false;}catch{}aiHandle=new IntPtr(Convert.ToInt64(req["handle"]));SetAiMode(AiMode);return ApprovalState();}
    if(action=="ai_mode"){SetAiMode(Convert.ToString(req["mode"]));return ApprovalState();}

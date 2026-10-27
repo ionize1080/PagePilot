@@ -36,31 +36,34 @@ namespace PagePilot.Deployment {
    Event("word.closed","count="+processes.Length+" forced="+force);
   }
   static bool IsRegistered(RegistryView view){
-   string expected=testPrefix==""?AssemblyName.GetAssemblyName(Dll).FullName:"PagePilot, Version=0.4.1.0, Culture=neutral, PublicKeyToken=null";
-   using(var u=User(view)){
+   string expected=testPrefix==""?AssemblyName.GetAssemblyName(Dll).FullName:"PagePilot, Version=0.4.4.0, Culture=neutral, PublicKeyToken=null";
+   using(var u=Store(view)){
     for(int i=0;i<Classes.Length;i++){
-     using(var k=u.OpenSubKey(Key(@"Software\Classes\CLSID\"+Ids[i]+@"\InprocServer32")))
+     using(var k=u.OpenSubKey(StorePath(@"Software\Classes\CLSID\"+Ids[i]+@"\InprocServer32")))
       if(k==null||Convert.ToString(k.GetValue(""))!="mscoree.dll"||Convert.ToString(k.GetValue("ThreadingModel"))!="Both"||Convert.ToString(k.GetValue("Class"))!=Classes[i]||Convert.ToString(k.GetValue("Assembly"))!=expected||Convert.ToString(k.GetValue("RuntimeVersion"))!="v4.0.30319"||!string.Equals(Convert.ToString(k.GetValue("CodeBase")),new Uri(Dll).ToString(),StringComparison.OrdinalIgnoreCase))return false;
-     using(var k=u.OpenSubKey(Key(@"Software\Classes\"+Classes[i]+@"\CLSID")))if(Convert.ToString(k?.GetValue(""))!=Ids[i])return false;
+     using(var k=u.OpenSubKey(StorePath(@"Software\Classes\"+Classes[i]+@"\CLSID")))if(Convert.ToString(k?.GetValue(""))!=Ids[i])return false;
     }
-    using(var k=u.OpenSubKey(Key(Addin)))return Convert.ToString(k?.GetValue("LoadBehavior"))=="3";
+    using(var k=u.OpenSubKey(StorePath(Addin)))return Convert.ToString(k?.GetValue("LoadBehavior"))=="3";
    }
   }
   static void Exclusive(Action action){
-   using(var mutex=new Mutex(false,"Local\\PagePilot.Deploy."+WindowsIdentity.GetCurrent().User.Value)){
+   using(var mutex=new Mutex(false,"Global\\PagePilot.Deploy.Registry")){
     bool entered=false;try{try{entered=mutex.WaitOne(0);}catch(AbandonedMutexException){entered=true;}if(!entered)throw new Exception("另一部署器正在操作，请等待它完成。");operationId=Guid.NewGuid().ToString("N");action();}finally{if(entered)mutex.ReleaseMutex();}
    }
   }
   static void ReadyConfig(){if(RuntimePaths.Warning!=null)throw new Exception("运行配置无效，请在“存储与日志”修正后重试。"+RuntimePaths.Warning);}
   static string Status(bool doctor){
-   var sb=new StringBuilder();sb.AppendLine("PagePilot 0.4.1 · 部署诊断");sb.AppendLine("生成时间 UTC："+DateTime.UtcNow.ToString("o"));
-   using(var id=WindowsIdentity.GetCurrent()){sb.AppendLine("账户："+id.Name+" · SID "+id.User);sb.AppendLine("权限："+(Elevated?"管理员（建议关闭后以普通用户重新运行）":"普通用户"));}
-   sb.AppendLine("系统："+Environment.OSVersion+" · "+(Environment.Is64BitOperatingSystem?"64":"32")+" 位");sb.AppendLine("版本目录："+root);
+   var sb=new StringBuilder();sb.AppendLine("PagePilot 0.4.4 · 部署诊断");sb.AppendLine("生成时间 UTC："+DateTime.UtcNow.ToString("o"));
+   using(var id=WindowsIdentity.GetCurrent()){sb.AppendLine("账户："+id.Name+" · SID "+id.User);sb.AppendLine("权限："+(Elevated?"管理员（Word 以管理员运行时请选择整台电脑范围）":"普通用户"));}
+   sb.AppendLine("系统："+Environment.OSVersion+" · "+(Environment.Is64BitOperatingSystem?"64":"32")+" 位");sb.AppendLine("版本目录："+root);sb.AppendLine("部署范围："+ScopeLabel);
    try{string word=DetectWord();var view=WordView();sb.AppendLine("Word："+word);sb.AppendLine("Word 版本："+FileVersionInfo.GetVersionInfo(word).FileVersion+" · "+(view==RegistryView.Registry64?"64":"32")+" 位");
     using(var machine=RegistryKey.OpenBaseKey(RegistryHive.LocalMachine,RegistryView.Registry32))using(var framework=machine.OpenSubKey(@"SOFTWARE\Microsoft\NET Framework Setup\NDP\v4\Full"))sb.AppendLine(".NET Framework Release："+Convert.ToString(framework?.GetValue("Release")));
     foreach(var v in new[]{RegistryView.Registry32,RegistryView.Registry64}){
-     using(var user=User(v))using(var k=user.OpenSubKey(Addin))sb.AppendLine(v+" · LoadBehavior="+Convert.ToString(k?.GetValue("LoadBehavior"))+" · CodeBase="+CodeBase(v));
-     using(var classes=RegistryKey.OpenBaseKey(RegistryHive.ClassesRoot,v))using(var server=classes.OpenSubKey(@"CLSID\"+Ids[0]+@"\InprocServer32"))sb.AppendLine(v+" · 有效 COM="+Convert.ToString(server?.GetValue("CodeBase")));
+     foreach(var hive in new[]{RegistryHive.CurrentUser,RegistryHive.LocalMachine})using(var source=RegistryKey.OpenBaseKey(hive,v)){
+      using(var k=source.OpenSubKey(Addin))sb.AppendLine(hive+" · "+v+" · LoadBehavior="+Convert.ToString(k?.GetValue("LoadBehavior")));
+      using(var k=source.OpenSubKey(@"Software\Classes\CLSID\"+Ids[0]+@"\InprocServer32"))sb.AppendLine(hive+" · "+v+" · CodeBase="+Convert.ToString(k?.GetValue("CodeBase")));
+     }
+     using(var classes=RegistryKey.OpenBaseKey(RegistryHive.ClassesRoot,v))using(var server=classes.OpenSubKey(@"CLSID\"+Ids[0]+@"\InprocServer32"))sb.AppendLine(v+" · HKCR 合并视图（不代表管理员 COM 已可激活）="+Convert.ToString(server?.GetValue("CodeBase")));
     }
     sb.AppendLine("注册核验："+(IsRegistered(view)?"此目录的全部类与启动标记匹配":"未注册此版本或注册不完整"));
     string ver=FileVersionInfo.GetVersionInfo(word).FileMajorPart+".0";
@@ -73,16 +76,17 @@ namespace PagePilot.Deployment {
    if(File.Exists(Dll+":Zone.Identifier"))sb.AppendLine("提示：DLL 存在下载区域标记；请检查文件属性中的来源限制。");
    foreach(var process in WordProcesses())try{sb.AppendLine("Word 进程 PID="+process.Id+" · 当前用户="+Owned(process)+" · 启动 UTC="+process.StartTime.ToUniversalTime().ToString("o")+" · "+(Loaded(process)?"此版本已连接且功能区已加载":"尚无此版本的完整加载回执"));}catch(Exception e){sb.AppendLine("进程检查失败："+e.Message);}
    if(WordProcesses().Length==0)sb.AppendLine("Word 未运行。注册完成不等于已经加载，请点击“启动 Word 并验证”。");
-   var settings=RuntimePaths.Current;sb.AppendLine("配置文件："+configFile);sb.AppendLine("规则与备份："+settings.DataDirectory);sb.AppendLine("模型与会话："+settings.ProfileDirectory);sb.AppendLine("日志目录："+settings.LogDirectory);sb.AppendLine("日志级别："+settings.LogLevel);sb.AppendLine("部署事务："+data);
+   var settings=RuntimePaths.Current;sb.AppendLine("配置文件："+configFile);sb.AppendLine("规则与备份："+settings.DataDirectory);sb.AppendLine("模型与会话："+settings.ProfileDirectory);sb.AppendLine("日志目录："+settings.LogDirectory);sb.AppendLine("日志级别："+settings.LogLevel);sb.AppendLine("部署事务："+JournalDirectory);
    if(RuntimePaths.Warning!=null)sb.AppendLine("配置错误，当前显示默认路径："+RuntimePaths.Warning);
    sb.AppendLine("若无 PagePilot 选项卡：文件 → 选项 → 加载项 → 管理 COM 加载项；并检查“禁用项目”。管理器不会清空 Office 禁用列表。");
+   if(doctor)sb.AppendLine(EnvironmentReport());
    Event("diagnostic.completed","full="+doctor);return sb.ToString();
   }
   static bool Loaded(Process process){
    try{var receipt=json.Deserialize<HostReceipt>(File.ReadAllText(HostHealth.ReceiptPath(RuntimePaths.Current.LogDirectory,process.Id)));return HostHealth.Matches(receipt,process.Id,process.StartTime.ToUniversalTime().Ticks,Dll)&&receipt.UserSid==WindowsIdentity.GetCurrent().User.Value;}catch{return false;}
   }
   static async Task<string> VerifyWord(){
-   ReadyConfig();if(!IsRegistered(WordView()))throw new Exception("请先启用此版本，再启动验证。");
+   ReadyConfig();CheckOtherScope(WordView());if(!IsRegistered(WordView()))throw new Exception("请先启用此版本，再启动验证。");
    if(WordProcesses().Length>0){if(WordProcesses().Any(Loaded))return "已验证：当前版本已连接 Word，且功能区已加载。\r\n\r\n"+Status(false);throw new Exception("检测到尚未验证的 Word 进程。请先保存并关闭 Word，再重新启动验证。");}
    Event("verify.begin");using(var launched=Process.Start(new ProcessStartInfo(DetectWord(),"/w"){UseShellExecute=true})){
     for(int i=0;i<150;i++){await Task.Delay(200);if(WordProcesses().Any(Loaded)){Event("verify.completed","connection and ribbon acknowledged");return "已验证：PagePilot 已连接，功能区已加载。\r\n\r\n"+Status(false);}}
@@ -117,7 +121,7 @@ namespace PagePilot.Deployment {
      string name=Path.GetFileName(f);if(!System.Text.RegularExpressions.Regex.IsMatch(name,@"^(manager|host|electron-\d+|bridge-\d+)\.jsonl(\.[123])?$"))continue;
      try{using(var fs=new FileStream(f,FileMode.Open,FileAccess.Read,FileShare.ReadWrite|FileShare.Delete))using(var reader=new StreamReader(fs))add("logs/"+name,reader.ReadToEnd());}catch(IOException e){add("logs/"+name+".read-error.txt",e.Message);}
     }
-    if(File.Exists(JournalPath))add("deployment/last.json",File.ReadAllText(JournalPath));
+    try{if(File.Exists(JournalPath))add("deployment/last.json",File.ReadAllText(JournalPath));}catch(UnauthorizedAccessException){add("deployment/read-error.txt","机器级回退记录需要管理员权限读取。");}
    }
    Event("diagnostic.export.completed","file="+destination);return destination;
   }
@@ -128,6 +132,8 @@ namespace PagePilot.Deployment {
     string command="ui",explicitConfig=null;bool force=false,acceptLoss=false,verify=false;
     for(int i=0;i<args.Length;i++){
      switch(args[i].ToLowerInvariant()){
+      case "--replace-existing":replaceExisting=true;break;
+      case "--scope":SelectScope(Next(args,ref i).ToLowerInvariant());break;
       case "--root":root=Path.GetFullPath(Next(args,ref i)).TrimEnd(Path.DirectorySeparatorChar);break;
       case "--config":explicitConfig=Path.GetFullPath(Next(args,ref i));break;
       case "--output":output=Path.GetFullPath(Next(args,ref i));break;
@@ -137,7 +143,8 @@ namespace PagePilot.Deployment {
       default:if(command!="ui"||i!=0)throw new Exception("未知参数："+args[i]);command=args[i].TrimStart('-','/').ToLowerInvariant();break;
      }
     }
-    RuntimePaths.Reload(explicitConfig);configFile=RuntimePaths.ConfigFile;Event("manager.start","version=0.4.1 command="+command+" elevated="+Elevated+" sid="+WindowsIdentity.GetCurrent().User+" os="+Environment.OSVersion);
+    RuntimePaths.Reload(explicitConfig);configFile=RuntimePaths.ConfigFile;Event("manager.start","version=0.4.4 command="+command+" scope="+ScopeName+" elevated="+Elevated+" sid="+WindowsIdentity.GetCurrent().User+" os="+Environment.OSVersion);
+    using(var process=Process.GetCurrentProcess())Event("environment.manager","bitness="+(Environment.Is64BitProcess?64:32)+" CLR="+Environment.Version+" "+ProcessSecurity(process));
     if(force&&!acceptLoss)throw new Exception("命令行强制关闭需要同时提供 --accept-unsaved-loss，未保存的 Word 修改会丢失。");
     if(command=="ui"){RunUi();return 0;}
     string result=null;
@@ -147,7 +154,7 @@ namespace PagePilot.Deployment {
      case "open-logs":OpenLogs();break;
      case "export-diagnostics":if(output==null)throw new Exception("请用 --output 指定新的 ZIP 文件路径");ExportDiagnostics(output);output=null;break;
      case "enable":case "disable":case "rollback":
-      ReadyConfig();Exclusive(()=>{if(force)CloseSelected(WordProcesses(),true);Closed();if(command=="enable"&&explicitConfig!=null)RuntimePaths.Current.Save(explicitConfig,true);if(command=="rollback")Rollback();else Change(command,WordView());});
+      ReadyConfig();if(command=="enable")CheckReplacementMode();RequireScopePermission();Exclusive(()=>{if(force)CloseSelected(WordProcesses(),true);Closed();if(command=="enable"&&explicitConfig!=null)RuntimePaths.Current.Save(explicitConfig,true);if(command=="rollback")Rollback();else Change(command,WordView());});
       result=command=="enable"?"注册已完成，尚未验证 Word 加载。请启动 Word 并验证。":"操作完成";
       if(verify&&command=="enable")result=VerifyWord().GetAwaiter().GetResult();break;
      case "verify":result=VerifyWord().GetAwaiter().GetResult();break;
