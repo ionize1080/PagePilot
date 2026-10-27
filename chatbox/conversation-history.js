@@ -16,9 +16,7 @@ const pagepilotHistory = (() => {
       if (converted.length) output.push({ role: 'assistant', content: converted });
       if (calls.length) output.push({ role: 'tool', content: calls.map(call => ({
         type: 'tool-result', toolCallId: call.toolCallId, toolName: call.toolName,
-        output: call.state === 'error'
-          ? { type: 'error-text', value: stringifyError(call.result) }
-          : { type: 'json', value: call.result ?? null },
+        output: toolOutput(call, stringifyError),
       })) });
       segment = []; calls = [];
     }
@@ -30,5 +28,15 @@ const pagepilotHistory = (() => {
     }
     await flush();
   }
-  return { isDeepSeek, emitAssistantMessages };
+  function toolOutput(call, stringifyError) {
+    const value = call.result;
+    // MCP used to return Error instances as successful results. The live SDK
+    // rejects Error as JSON, although persistence turns it into a plain object.
+    const failed = call.state === 'error' || value instanceof Error ||
+      (value && /Error$/.test(value.name || '') && ('cause' in value || 'message' in value));
+    if (failed) return { type: 'error-text', value: stringifyError(value?.message || value?.cause?.message || value) };
+    try { return { type: 'json', value: JSON.parse(JSON.stringify(value ?? null)) }; }
+    catch { return { type: 'error-text', value: 'Tool result could not be serialized; inspect the document before retrying.' }; }
+  }
+  return { isDeepSeek, emitAssistantMessages, toolOutput };
 })();

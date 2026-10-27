@@ -18,7 +18,7 @@ namespace PagePilot.Deployment {
     var shell=new TableLayoutPanel{Dock=DockStyle.Fill,ColumnCount=2,RowCount=1};shell.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute,px(176)));shell.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,100));form.Controls.Add(shell);
     var rail=new FlowLayoutPanel{Dock=DockStyle.Fill,FlowDirection=FlowDirection.TopDown,WrapContents=false,BackColor=Color.FromArgb(241,246,244),Padding=new Padding(px(18),px(28),px(12),px(12))};shell.Controls.Add(rail,0,0);
     rail.Controls.Add(new Label{Text="PagePilot",AutoSize=true,Font=new Font(form.Font.FontFamily,18,FontStyle.Bold),ForeColor=green,Margin=new Padding(px(5),0,0,px(6))});
-    rail.Controls.Add(new Label{Text="部署管理器  0.4.4",AutoSize=true,ForeColor=muted,Font=new Font(form.Font.FontFamily,9),Margin=new Padding(px(5),0,0,px(30))});
+    rail.Controls.Add(new Label{Text="部署管理器  0.4.5",AutoSize=true,ForeColor=muted,Font=new Font(form.Font.FontFamily,9),Margin=new Padding(px(5),0,0,px(30))});
     var pages=new Panel{Dock=DockStyle.Fill};shell.Controls.Add(pages,1,0);
     Func<string,string,TableLayoutPanel> page=(title,desc)=>{
      var scroll=new Panel{Dock=DockStyle.Fill,AutoScroll=true,BackColor=Color.White,Visible=false};

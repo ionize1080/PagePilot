@@ -31,12 +31,13 @@ namespace PagePilot {
   private readonly Dictionary<string,Office.CustomTaskPane> panes=new Dictionary<string,Office.CustomTaskPane>();
   private bool pendingAI,pendingProvider;private string pendingPrompt;
   private Process settingsProcess;private Stopwatch settingsStartup;private IntPtr settingsHandle;internal double SettingsReadyMs;private Office.IRibbonUI ribbon;private Office.CustomTaskPane aiPane;private AiPane aiControl;private IntPtr aiHandle;
+  internal NavigationAppearance NavigationStyle=new NavigationAppearance();internal int NavigationStyleVersion;
   private long aiOwner;internal int Theme=0,NavigationGap=36;internal string AiMode="window";private object approvalDocument;private bool approvalPending;private long stateRevision;
   public void RibbonLoaded(Office.IRibbonUI value){ribbon=value;Log("RibbonLoaded");Health(ribbonReady:true);}
   private void Health(string word=null,bool ready=false,bool ribbonReady=false)=>HostHealth.Update(typeof(Connect).Assembly.Location,typeof(Connect).Assembly.GetName().Version.ToString(),word,ready,ribbonReady);
   public object RibbonImage(Office.IRibbonControl control){IntPtr window=IntPtr.Zero;try{window=WordWindows.Handle(App.ActiveWindow);}catch{}return RibbonIcons.Picture(control.Id,window,Theme);}
-  private void LoadPreferences(){try{var p=Json().Deserialize<Dictionary<string,object>>(File.ReadAllText(Path.Combine(Data,"preferences.json")));Theme=Convert.ToInt32(p["theme"]);NavigationGap=Convert.ToInt32(p["navigationGap"]);AiMode=Convert.ToString(p["aiMode"]);}catch{}}
-  private void SavePreferences(){Directory.CreateDirectory(Data);File.WriteAllText(Path.Combine(Data,"preferences.json"),Json().Serialize(new{theme=Theme,navigationGap=NavigationGap,aiMode=AiMode}));RuntimeLog.Write("host","preferences.saved","theme="+Theme+" navigationGap="+NavigationGap+" aiMode="+AiMode);}
+  private void LoadPreferences(){try{var p=Json().Deserialize<Dictionary<string,object>>(File.ReadAllText(Path.Combine(Data,"preferences.json")));Theme=Convert.ToInt32(p["theme"]);NavigationGap=Convert.ToInt32(p["navigationGap"]);AiMode=Convert.ToString(p["aiMode"]);if(p.ContainsKey("navigationAppearance")){var style=Json().Deserialize<NavigationAppearance>(Json().Serialize(p["navigationAppearance"]));style.Validate();NavigationStyle=style;}}catch{}}
+  private void SavePreferences(){Directory.CreateDirectory(Data);File.WriteAllText(Path.Combine(Data,"preferences.json"),Json().Serialize(new{theme=Theme,navigationGap=NavigationGap,navigationAppearance=NavigationStyle,aiMode=AiMode}));RuntimeLog.Write("host","preferences.saved","theme="+Theme+" navigationGap="+NavigationGap+" aiMode="+AiMode);}
   internal void QueuePrompt(string text){pendingPrompt=text;LaunchChat();}
   private void SetAiMode(string mode){
    if(mode!="sidebar"&&mode!="window")throw new Exception("无效显示模式");
@@ -161,11 +162,12 @@ namespace PagePilot {
     }AutoApprove=enabled;return ApprovalState();
    }
    if(action=="settings_provider"){pendingProvider=true;LaunchChat();return new{opened=true};}
-   if(action=="settings_read")return new{theme=Theme,navigationGap=NavigationGap,aiMode=AiMode,headingRules=ReadRulesText()};
+   if(action=="settings_read")return new{theme=Theme,navigationGap=NavigationGap,navigationAppearance=NavigationStyle,aiMode=AiMode,headingRules=ReadRulesText()};
    if(action=="settings_write"){
     string rules=Convert.ToString(req["headingRules"]),mode=Convert.ToString(req["aiMode"]);Pane.ParseRules(rules);
     int theme=Convert.ToInt32(req["theme"]),gap=Convert.ToInt32(req["navigationGap"]);if(theme<0||theme>2||gap<0||gap>160||(mode!="window"&&mode!="sidebar"))throw new Exception("设置值超出范围");
-    Directory.CreateDirectory(Data);File.WriteAllText(Path.Combine(Data,"heading-rules.txt"),rules);Theme=theme;NavigationGap=gap;SetAiMode(mode);ribbon?.Invalidate();return new{saved=true};
+    if(req.ContainsKey("navigationAppearance")){var style=Json().Deserialize<NavigationAppearance>(Json().Serialize(req["navigationAppearance"]));style.Validate();NavigationStyle=style;NavigationStyleVersion++;}
+     Directory.CreateDirectory(Data);File.WriteAllText(Path.Combine(Data,"heading-rules.txt"),rules);Theme=theme;NavigationGap=gap;SetAiMode(mode);ribbon?.Invalidate();return new{saved=true};
    }
    if(action=="capabilities")return new{wordVersion=(string)App.Version,majorVersion=(int)double.Parse((string)App.Version,System.Globalization.CultureInfo.InvariantCulture),documentOpen=App.Documents.Count>0,compatibilityMode=App.Documents.Count>0?(int)App.ActiveDocument.CompatibilityMode:0,officeBitness=Environment.Is64BitProcess?64:32,protectedDocument=App.Documents.Count>0?(int)App.ActiveDocument.ProtectionType!=-1:false};
    if(action=="checkpoint"){

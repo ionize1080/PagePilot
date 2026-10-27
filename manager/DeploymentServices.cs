@@ -36,7 +36,7 @@ namespace PagePilot.Deployment {
    Event("word.closed","count="+processes.Length+" forced="+force);
   }
   static bool IsRegistered(RegistryView view){
-   string expected=testPrefix==""?AssemblyName.GetAssemblyName(Dll).FullName:"PagePilot, Version=0.4.4.0, Culture=neutral, PublicKeyToken=null";
+   string expected=testPrefix==""?AssemblyName.GetAssemblyName(Dll).FullName:"PagePilot, Version=0.4.5.0, Culture=neutral, PublicKeyToken=null";
    using(var u=Store(view)){
     for(int i=0;i<Classes.Length;i++){
      using(var k=u.OpenSubKey(StorePath(@"Software\Classes\CLSID\"+Ids[i]+@"\InprocServer32")))
@@ -53,7 +53,7 @@ namespace PagePilot.Deployment {
   }
   static void ReadyConfig(){if(RuntimePaths.Warning!=null)throw new Exception("运行配置无效，请在“存储与日志”修正后重试。"+RuntimePaths.Warning);}
   static string Status(bool doctor){
-   var sb=new StringBuilder();sb.AppendLine("PagePilot 0.4.4 · 部署诊断");sb.AppendLine("生成时间 UTC："+DateTime.UtcNow.ToString("o"));
+   var sb=new StringBuilder();sb.AppendLine("PagePilot 0.4.5 · 部署诊断");sb.AppendLine("生成时间 UTC："+DateTime.UtcNow.ToString("o"));
    using(var id=WindowsIdentity.GetCurrent()){sb.AppendLine("账户："+id.Name+" · SID "+id.User);sb.AppendLine("权限："+(Elevated?"管理员（Word 以管理员运行时请选择整台电脑范围）":"普通用户"));}
    sb.AppendLine("系统："+Environment.OSVersion+" · "+(Environment.Is64BitOperatingSystem?"64":"32")+" 位");sb.AppendLine("版本目录："+root);sb.AppendLine("部署范围："+ScopeLabel);
    try{string word=DetectWord();var view=WordView();sb.AppendLine("Word："+word);sb.AppendLine("Word 版本："+FileVersionInfo.GetVersionInfo(word).FileVersion+" · "+(view==RegistryView.Registry64?"64":"32")+" 位");
@@ -143,7 +143,7 @@ namespace PagePilot.Deployment {
       default:if(command!="ui"||i!=0)throw new Exception("未知参数："+args[i]);command=args[i].TrimStart('-','/').ToLowerInvariant();break;
      }
     }
-    RuntimePaths.Reload(explicitConfig);configFile=RuntimePaths.ConfigFile;Event("manager.start","version=0.4.4 command="+command+" scope="+ScopeName+" elevated="+Elevated+" sid="+WindowsIdentity.GetCurrent().User+" os="+Environment.OSVersion);
+    RuntimePaths.Reload(explicitConfig);configFile=RuntimePaths.ConfigFile;Event("manager.start","version=0.4.5 command="+command+" scope="+ScopeName+" elevated="+Elevated+" sid="+WindowsIdentity.GetCurrent().User+" os="+Environment.OSVersion);
     using(var process=Process.GetCurrentProcess())Event("environment.manager","bitness="+(Environment.Is64BitProcess?64:32)+" CLR="+Environment.Version+" "+ProcessSecurity(process));
     if(force&&!acceptLoss)throw new Exception("命令行强制关闭需要同时提供 --accept-unsaved-loss，未保存的 Word 修改会丢失。");
     if(command=="ui"){RunUi();return 0;}

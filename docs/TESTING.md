@@ -27,3 +27,8 @@ Win10 / Office 2010 本次发布的完整实机验收尚未完成。用户提供
 运行 `tests/DeploymentRegression.csproj`、`tests/CoreTests.csproj`、`tests/capabilities.py`。部署测试使用随机的当前用户测试子键和临时目录，不改实际加载项注册。命令行 `enable --verify --output <报告>` 可检查真实安装；请只在自己的测试环境使用，并保存/关闭 Word。
 
 发布检查须包含完整运行文件清单、ZIP 白名单与 SHA-256 校验；用户诊断包、会话、密钥和绝对路径测试输出不得进入源码或发布资源。
+
+
+## 0.4.5 — 2026-10-27
+
+本次连续对话、导航、布局、性能和安装验证记录见 [0.4.5 发布说明](RELEASE-v0.4.5.md)。新增 `tests/history-schema.cjs` 使用实际发布 SDK 校验历史；`tests/conversation-history.cjs --live-key <本机密钥文件>` 只发送合成工具数据；`NavigationRegression.csproj` 可接收本机 DOCX 做只读检查，`NavigationIntegration.csproj` 验证真实 Word 导航；`tests/navigation-settings.cjs` 验证目录样式设置与布局。私有会话回放资料不进入仓库与发布包。

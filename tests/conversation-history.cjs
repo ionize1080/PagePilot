@@ -3,7 +3,7 @@
 const fs = require('node:fs'), path = require('node:path'), vm = require('node:vm');
 const assert = require('node:assert/strict'), http = require('node:http');
 const root = path.resolve(__dirname, '..');
-const bundle = fs.readFileSync(process.argv[2] || path.join(root, 'dist/Chatbox/native/dist/renderer/js/index.TlLbGKvw.js'), 'utf8');
+const bundle = fs.readFileSync((process.argv[2] && !process.argv[2].startsWith('--') ? process.argv[2] : undefined) || path.join(root, 'dist/Chatbox/native/dist/renderer/js/index.TlLbGKvw.js'), 'utf8');
 const sdk = fs.readFileSync(path.join(root, 'dist/Chatbox/native/dist/renderer/js/vendor-ai.CMAD2Bsd.js'), 'utf8');
 function range(text, start, end) {
   const a = text.indexOf(start), b = text.indexOf(end, a + start.length);
@@ -81,15 +81,16 @@ const server = http.createServer(async (req, res) => {
   wire = await evaluate(`(async()=>FO(await convertToModelMessages(history,{modelSupportVision:false,preserveReasoning:preserve('grok-4')})))()`);
   assert(!('reasoning_content' in wire[0])); assert.equal(wire[0].tool_calls.length,1); assert.equal(wire[1].content,'Denied');
   console.log('PASS: three HTTP turns, persisted history, parallel tools, exact reasoning, provider isolation, failed/pending tools');
+  const keyIndex = process.argv.indexOf('--live-key');
   const liveIndex = process.argv.indexOf('--live-config');
-  if (liveIndex !== -1) {
+  if (liveIndex !== -1 || keyIndex !== -1) {
     // Explicit opt-in. Credentials stay in memory; use only a synthetic tool/document.
-    const settings = JSON.parse(fs.readFileSync(process.argv[liveIndex + 1], 'utf8')).settings.providers.deepseek;
+    const settings = keyIndex !== -1 ? {apiKey:fs.readFileSync(process.argv[keyIndex+1],'utf8').match(/sk-[A-Za-z0-9_-]+/)[0],models:[{modelId:'deepseek-flash'}]} : JSON.parse(fs.readFileSync(process.argv[liveIndex + 1], 'utf8')).settings.providers.deepseek;
     assert(settings.apiKey, 'Configured DeepSeek credential required');
     const model = settings.models[0].modelId;
     context.history = [];
     for (let turn = 1; turn <= 3; turn++) {
-      context.history.push({role:'user',contentParts:[{type:'text',text:`Test turn ${turn}. Call pagepilot_context once for the synthetic document, then answer only its name. Always call the tool again this turn.`}]});
+      context.history.push({role:'user',contentParts:[{type:'text',text:`Test turn ${turn}. Call pagepilot_context once for the synthetic document, then answer only its name. Always call the tool once this turn. If it fails, report the failure and do not retry.`}]});
       const state = evaluate('createInitialState()');
       let completed = false, calls = 0;
       for (let step = 0; step < 4; step++) {
@@ -108,14 +109,14 @@ const server = http.createServer(async (req, res) => {
         if(message.reasoning_content)chunks.push({type:'reasoning-delta',text:message.reasoning_content});
         if(message.content)chunks.push({type:'text-delta',text:message.content});
         for(const call of message.tool_calls || [])chunks.push({type:'tool-call',toolCallId:call.id,toolName:call.function.name,input:JSON.parse(call.function.arguments)});
-        for(const call of message.tool_calls || []){calls++;chunks.push({type:'tool-result',toolCallId:call.id,output:{name:'PagePilot synthetic regression document'}});}
+        for(const call of message.tool_calls || []){calls++;chunks.push({type:'tool-result',toolCallId:call.id,output:turn===1?Object.assign(new Error('Synthetic tool rejection'),{name:'MCPClientError',cause:{message:'Synthetic tool rejection'}}):{name:'PagePilot synthetic regression document'}});}
         context.liveState=state; context.liveChunks=chunks;
         Object.assign(state,await evaluate(`(async()=>{let s=liveState;for(const c of liveChunks)s=(await processStreamChunk(c,s,{})).state;return s;})()`));
         if(!message.tool_calls?.length){assert.equal(payload.choices[0].finish_reason,'stop');completed=true;break;}
       }
       assert(completed && calls > 0, `Live turn ${turn} completed with a tool call`);
       context.history.push({role:'assistant',contentParts:state.contentParts});
-      context.history=JSON.parse(JSON.stringify(context.history));
+      if(turn===2)context.history=JSON.parse(JSON.stringify(context.history));
       console.log(`PASS live DeepSeek compatible history: turn ${turn}, ${calls} synthetic tool calls`);
     }
   }

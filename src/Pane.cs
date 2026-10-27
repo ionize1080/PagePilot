@@ -15,6 +15,7 @@ namespace PagePilot {
   private ListBox hits;private TreeView headings;private bool rebuilding;private TextBlock status;
   private List<Hit> found=new List<Hit>();private string snapshot;private int snapshotStart,snapshotEnd,snapshotDocumentEnd;private bool snapshotSelection;
   private int? lockedStart,lockedEnd;private string cachedText,cachedQuery;private int[] cachedPositions,cachedEnds;private bool cachedIgnore,aiOutline;private int outlineVersion;
+  private bool scanning;private int appearanceVersion=-1;private System.Threading.CancellationTokenSource scanCancel;
   private int idleTicks;private int outlineEnd;private List<Heading> outline=new List<Heading>();private string outlineSnapshot,ruleSnapshot;
   private readonly System.Windows.Forms.Timer searchTimer=new System.Windows.Forms.Timer{Interval=350};private int searchVersion;private System.Threading.CancellationTokenSource searchCancel;private SearchHighlight highlight;private readonly System.Windows.Forms.Timer highlightTimer=new System.Windows.Forms.Timer{Interval=180};
   private readonly System.Windows.Forms.Timer timer=new System.Windows.Forms.Timer{Interval=1800};
@@ -36,12 +37,12 @@ namespace PagePilot {
     ignore.Click+=(s,e)=>ScheduleSearch();selection.Click+=(s,e)=>{lockedStart=null;lockedEnd=null;ScheduleSearch();};
     hits.SelectionChanged+=(s,e)=>Guard(()=>{var item=hits.SelectedItem as Hit;if(item!=null){EnsureSnapshot();doc.Activate();doc.Range(item.Start,item.Start+item.Length).Select();}});
    }else{
-    headings=Find<TreeView>("Headings");On("Refresh",RefreshOutline);On("Analyze",AIOutline);On("Apply",ApplyOutline);
+    headings=Find<TreeView>("Headings");On("Refresh",RefreshOutline);On("StopScan",()=>{scanCancel?.Cancel();outlineVersion++;status.Text="分析已取消";});On("Analyze",AIOutline);On("Apply",ApplyOutline);
     headings.SelectedItemChanged+=(s,e)=>{if(!rebuilding)Guard(()=>{var item=(headings.SelectedItem as TreeViewItem)?.Tag as Heading;if(item!=null)Navigate(item);});};
 
    }
-   timer.Tick+=(s,e)=>{if(Visible&&WordWindows.IsWindowVisible(Handle)){try{ApplyTheme();RefreshBinding();bool inspect=++idleTicks%3==0;
-     if(page==1&&navigationCancel==null&&outlineSnapshot!=null&&((int)doc.Content.End!=outlineEnd||Connect.ReadRulesText()!=ruleSnapshot||(inspect&&(string)doc.Content.Text!=outlineSnapshot))){if(aiOutline)status.Text="AI 目录待刷新 · 文档已变化，请重新识别";else RefreshOutline();}
+   timer.Tick+=(s,e)=>{if(Visible&&WordWindows.IsWindowVisible(Handle)){try{ApplyTheme();ApplyNavigationAppearance();RefreshBinding();bool inspect=++idleTicks%3==0;
+     if(page==1&&!scanning&&navigationCancel==null&&outlineSnapshot!=null&&((int)doc.Content.End!=outlineEnd||Connect.ReadRulesText()!=ruleSnapshot)){status.Text="目录待更新 · 点击分析刷新（含样式变化）";}
      if(page==0&&snapshot!=null&&((int)doc.Content.End!=snapshotDocumentEnd||(inspect&&(string)doc.Content.Text!=snapshot)))ScheduleSearch();}catch{}}};timer.Start();
   }
   private void ApplyTheme(){if(appliedTheme==host.Theme)return;appliedTheme=host.Theme;
@@ -53,11 +54,11 @@ namespace PagePilot {
    dynamic current=host.App.ActiveDocument;bool same=false;
    try{same=object.Equals(doc,current)&&(string)doc.FullName==(string)current.FullName;}catch{}
    if(same)return;
-   navigationCancel?.Cancel();outlineVersion++;aiOutline=false;lockedStart=null;lockedEnd=null;searchVersion++;doc=current;snapshot=null;outlineSnapshot=null;found.Clear();outline.Clear();
+   navigationCancel?.Cancel();scanCancel?.Cancel();outlineVersion++;aiOutline=false;lockedStart=null;lockedEnd=null;searchVersion++;doc=current;snapshot=null;outlineSnapshot=null;found.Clear();outline.Clear();
    if(hits!=null)hits.ItemsSource=null;if(headings!=null)headings.Items.Clear();
    status.Text="已切换文档 · 请重新预览";
   }
-  public void SelectPage(int index){Guard(()=>{if(page==1&&outlineSnapshot==null)RefreshOutline();});}
+  public void SelectPage(int index){Guard(()=>{if(page==1&&outlineSnapshot==null&&!scanning)BeginInvoke(new Action(RefreshOutline));});}
   private void Guard(Action action){try{RefreshBinding();action();}catch(Exception e){PagePilot.Configuration.RuntimeLog.Write("host","pane.failed",e.GetType().Name+" stack="+e.StackTrace,"error");status.Text=e.Message;System.Windows.Forms.MessageBox.Show(e.Message,"PagePilot");}}
   private void ScheduleSearch(){searchCancel?.Cancel();highlight?.Hide();searchVersion++;snapshot=null;searchTimer.Stop();searchTimer.Start();}
   private async void FindMatches(){
@@ -127,25 +128,76 @@ namespace PagePilot {
    var list=new List<HeadingRule>();foreach(string line in text.Replace("\r","").Split('\n')){if(string.IsNullOrWhiteSpace(line))continue;var parts=line.Split(new[]{'|'},2);if(parts.Length!=2||!int.TryParse(parts[0],out int level)||level<1||level>9)throw new Exception("规则格式应为 1|^标题正则，级别为 1–9。");Engine.Compile(parts[1]);list.Add(new HeadingRule{Name="自定义",Level=level,Pattern=parts[1]});}list.AddRange(Engine.Defaults);return list;
   }
   private async void RefreshOutline(){
-   int version=++outlineVersion;object document=doc;aiOutline=false;
-   try{string rulesText=Connect.ReadRulesText();var rules=ParseRules(rulesText);var result=new List<Heading>();string before=(string)doc.Content.Text;int end=(int)doc.Content.End;
-    status.Text="正在读取目录…";await System.Threading.Tasks.Task.Delay(1);
-    int i=0;var batch=System.Diagnostics.Stopwatch.StartNew();
-    foreach(dynamic p in doc.Paragraphs){if(version!=outlineVersion||IsDisposed||!object.Equals(document,doc))return;i++;dynamic r=p.Range;string text=((string)r.Text).Trim('\r','\a',' ','\t');int level=Engine.Level(text,rules);if(level>0)result.Add(new Heading{Paragraph=i,Start=(int)r.Start,End=(int)r.End-1,Level=level,Text=text});
-     if(batch.ElapsedMilliseconds>=20){Connect.Log("PERF navigation.batch ms="+batch.ElapsedMilliseconds);await System.Threading.Tasks.Task.Delay(1);batch.Restart();}
+   scanCancel?.Cancel();var cancel=new System.Threading.CancellationTokenSource();scanCancel=cancel;
+   int version=++outlineVersion;object document=doc;scanning=true;
+   Find<Button>("StopScan").Visibility=Visibility.Visible;Find<Button>("Apply").IsEnabled=false;
+   try{
+    status.Text="正在分析文档结构…";await System.Threading.Tasks.Task.Delay(20);cancel.Token.ThrowIfCancellationRequested();
+    string rulesText=Connect.ReadRulesText();var rules=ParseRules(rulesText);var rows=new List<ParagraphInfo>();
+    string before=(string)doc.Content.Text;int end=(int)doc.Content.End,count=(int)doc.Paragraphs.Count;
+    var tocRanges=new List<Tuple<int,int>>();foreach(dynamic toc in doc.TablesOfContents)tocRanges.Add(Tuple.Create((int)toc.Range.Start,(int)toc.Range.End));
+    var batch=System.Diagnostics.Stopwatch.StartNew();var total=System.Diagnostics.Stopwatch.StartNew();
+    int i=0,bodySamples=0;
+    foreach(dynamic p in doc.Paragraphs){
+     cancel.Token.ThrowIfCancellationRequested();if(version!=outlineVersion||IsDisposed||!object.Equals(document,doc))return;
+     dynamic r=p.Range;string text=((string)r.Text??"").Trim('\r','\a',' ','\t');
+     var row=new ParagraphInfo{Paragraph=++i,Start=(int)r.Start,End=(int)r.End-1,Text=text,OutlineLevel=(int)p.OutlineLevel};
+     row.InToc=tocRanges.Any(t=>row.Start>=t.Item1&&row.Start<t.Item2);
+     if(!row.InToc&&row.OutlineLevel>=1&&row.OutlineLevel<=9&&(int)r.ListFormat.ListType!=0)row.Number=(string)r.ListFormat.ListString;
+     if(text.Length>140&&row.OutlineLevel>9&&bodySamples++<12){row.Size=(double)r.Font.Size;if(row.Size>100)row.Size=(double)r.Characters[1].Font.Size;}
+     if(text.Length>0&&text.Length<=140&&!row.InToc&&(row.OutlineLevel<1||row.OutlineLevel>9)){
+      dynamic style=r.Style;row.Style=(string)style.NameLocal;
+      row.Size=(double)r.Font.Size;if(row.Size>100)row.Size=(double)r.Characters[1].Font.Size;
+      row.Bold=(int)r.Font.Bold==-1;row.InTable=(bool)r.Information[12];
+      if(text.Length<=140){row.SpaceBefore=(double)p.SpaceBefore;row.Centered=(int)p.Alignment==1;
+       if((int)r.ListFormat.ListType!=0){row.ListLevel=(int)r.ListFormat.ListLevelNumber;row.Number=(string)r.ListFormat.ListString;}}
+     }
+     rows.Add(row);
+     if(batch.ElapsedMilliseconds>=12){status.Text=$"正在分析 · {i:N0} / {count:N0} 段";await System.Threading.Tasks.Task.Delay(1);batch.Restart();}
     }
+    var result=await System.Threading.Tasks.Task.Run(()=>NavigationEngine.Analyze(rows,rules,cancel.Token),cancel.Token);
     if(version!=outlineVersion||IsDisposed||!object.Equals(document,doc))return;
-    if((string)doc.Content.Text!=before){status.Text="文档已变化，请刷新目录";return;}
-    outline=result;outlineSnapshot=before;outlineEnd=end;ruleSnapshot=rulesText;RenderOutline();status.Text=$"识别 {outline.Count} 个标题 · 单击跳转";Connect.Log("navigation.scan.completed headings="+outline.Count);
-   }catch(Exception e){PagePilot.Configuration.RuntimeLog.Write("host","navigation.scan.failed",e.GetType().Name+" stack="+e.StackTrace,"error");if(!IsDisposed&&version==outlineVersion)status.Text="目录读取失败："+e.Message;}
+    if((string)doc.Content.Text!=before||(int)doc.Content.End!=end){status.Text="文档已变化，请重新分析";return;}
+    aiOutline=false;outline=result;outlineSnapshot=before;outlineEnd=end;ruleSnapshot=rulesText;RenderOutline();ApplyNavigationAppearance();
+    status.Text=$"{outline.Count:N0} 个标题 · 单击定位 · 展开加载子目录";
+    Connect.Log("navigation.scan.completed headings="+outline.Count+" paragraphs="+count+" ms="+total.ElapsedMilliseconds);
+   }catch(OperationCanceledException){if(!IsDisposed&&version==outlineVersion)status.Text="分析已取消";}
+   catch(Exception e){PagePilot.Configuration.RuntimeLog.Write("host","navigation.scan.failed",e.GetType().Name+" stack="+e.StackTrace,"error");if(!IsDisposed&&version==outlineVersion)status.Text="目录读取失败："+e.Message;}
+   finally{if(scanCancel==cancel){scanCancel=null;scanning=false;if(!IsDisposed){Find<Button>("StopScan").Visibility=Visibility.Collapsed;Find<Button>("Apply").IsEnabled=navigationCancel==null;}}cancel.Dispose();}
   }
+  sealed class OutlineNode {internal Heading Heading;internal List<OutlineNode> Children=new List<OutlineNode>();}
   private void RenderOutline(){
-   rebuilding=true;try{headings.Items.Clear();var stack=new Stack<TreeViewItem>();foreach(var item in outline){
-    while(stack.Count>0&&((Heading)stack.Peek().Tag).Level>=item.Level)stack.Pop();
-    var node=new TreeViewItem{Header=new TextBlock{Text=item.Text,TextWrapping=TextWrapping.Wrap,MaxWidth=290},Tag=item,IsExpanded=item.Level==1,Padding=new Thickness(4,7,4,7),ToolTip="第 "+item.Paragraph+" 段 · "+item.Level+" 级"};
-    ((TextBlock)node.Header).MouseLeftButtonDown+=(s,e)=>{if(node.IsSelected)Guard(()=>Navigate(item));};
-    if(stack.Count>0)stack.Peek().Items.Add(node);else headings.Items.Add(node);stack.Push(node);
-   }}finally{rebuilding=false;}
+   rebuilding=true;try{
+    headings.Items.Clear();var roots=new List<OutlineNode>();var stack=new Stack<OutlineNode>();
+    foreach(var item in outline){while(stack.Count>0&&stack.Peek().Heading.Level>=item.Level)stack.Pop();
+     var node=new OutlineNode{Heading=item};if(stack.Count>0)stack.Peek().Children.Add(node);else roots.Add(node);stack.Push(node);}
+    foreach(var root in roots)headings.Items.Add(CreateNode(root));
+   }finally{rebuilding=false;}
+  }
+  private TreeViewItem CreateNode(OutlineNode model){
+   var item=model.Heading;var label=new TextBlock{Text=item.Text.Length>120?item.Text.Substring(0,120)+"…":item.Text,TextWrapping=TextWrapping.Wrap};
+   var node=new TreeViewItem{Header=label,Tag=item,Padding=new Thickness(4,6,4,6),HorizontalContentAlignment=HorizontalAlignment.Stretch,ToolTip="第 "+item.Paragraph+" 段 · "+item.Level+" 级\n"+item.Text};
+   label.SetBinding(TextBlock.MaxWidthProperty,new System.Windows.Data.Binding("ActualWidth"){Source=headings,Converter=new NavigationWidth(),ConverterParameter=item.Level});
+   StyleLabel(label,item.Level);label.MouseLeftButtonDown+=(s,e)=>{if(node.IsSelected)Guard(()=>Navigate(item));};
+   if(model.Children.Count>0){node.Items.Add(new TreeViewItem{Header="加载子目录…"});bool loaded=false;
+    node.Expanded+=(s,e)=>{if(e.OriginalSource!=node||loaded)return;loaded=true;node.Items.Clear();foreach(var child in model.Children)node.Items.Add(CreateNode(child));};}
+   return node;
+  }
+  sealed class NavigationWidth:System.Windows.Data.IValueConverter {
+   public object Convert(object value,Type target,object parameter,System.Globalization.CultureInfo culture)=>Math.Max(50,(double)value-52-(System.Convert.ToInt32(parameter)-1)*19);
+   public object ConvertBack(object value,Type target,object parameter,System.Globalization.CultureInfo culture)=>throw new NotSupportedException();
+  }
+  private void StyleLabel(TextBlock label,int level){var style=host.NavigationStyle.Levels[Math.Max(0,Math.Min(8,level-1))];
+   label.LineHeight=style.Size*1.5;label.MaxHeight=style.Size*3;label.TextTrimming=TextTrimming.CharacterEllipsis;
+   label.FontFamily=new System.Windows.Media.FontFamily(style.Font);label.FontSize=style.Size;label.FontWeight=style.Bold?FontWeights.Bold:FontWeights.Normal;
+   label.Foreground=new System.Windows.Media.SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(style.Color));}
+  private void ApplyNavigationAppearance(){
+   if(page!=1||headings==null||appearanceVersion==host.NavigationStyleVersion)return;appearanceVersion=host.NavigationStyleVersion;
+   var background=(System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(host.NavigationStyle.Background);
+   ((Grid)view).Background=new System.Windows.Media.SolidColorBrush(background);bool dark=background.R*0.2126+background.G*0.7152+background.B*0.0722<120;
+   System.Windows.Documents.TextElement.SetForeground(view,new System.Windows.Media.SolidColorBrush(dark?System.Windows.Media.Colors.White:System.Windows.Media.Color.FromRgb(30,41,59)));
+   status.Foreground=new System.Windows.Media.SolidColorBrush(dark?System.Windows.Media.Color.FromRgb(203,213,225):System.Windows.Media.Color.FromRgb(100,116,139));
+   Action<ItemsControl> apply=null;apply=parent=>{foreach(TreeViewItem n in parent.Items){if(n.Tag is Heading h&&n.Header is TextBlock t)StyleLabel(t,h.Level);apply(n);}};apply(headings);
   }
   private void Navigate(Heading item){
    if((string)doc.Content.Text!=outlineSnapshot){if(aiOutline)throw new Exception("AI 目录已过期，请重新识别。");RefreshOutline();return;}
@@ -160,11 +212,12 @@ namespace PagePilot {
   private System.Threading.CancellationTokenSource navigationCancel;
   private async void AIOutline(){
    if(navigationCancel!=null){navigationCancel.Cancel();return;}
+   scanCancel?.Cancel();outlineVersion++;
    var cancel=new System.Threading.CancellationTokenSource();navigationCancel=cancel;var button=Find<Button>("Analyze");
    button.Content="取消识别";Find<Button>("Apply").IsEnabled=false;Find<Button>("Refresh").IsEnabled=false;
    try{
     object document=doc;string before=(string)doc.Content.Text;var rows=new List<Heading>();int index=0;
-    foreach(dynamic p in doc.Paragraphs){dynamic r=p.Range;rows.Add(new Heading{Paragraph=++index,Start=(int)r.Start,End=(int)r.End-1,Text=((string)r.Text).Trim()});}
+    var batch=System.Diagnostics.Stopwatch.StartNew();foreach(dynamic p in doc.Paragraphs){cancel.Token.ThrowIfCancellationRequested();dynamic r=p.Range;rows.Add(new Heading{Paragraph=++index,Start=(int)r.Start,End=(int)r.End-1,Text=((string)r.Text).Trim()});if(batch.ElapsedMilliseconds>=12){await System.Threading.Tasks.Task.Delay(1);batch.Restart();}}
     var progress=new Progress<string>(text=>{if(!IsDisposed&&!cancel.IsCancellationRequested)status.Text=text;});
     var result=await NavigationAi.Analyze(rows,Find<TextBox>("AiRequirement").Text,progress,cancel.Token);
     cancel.Token.ThrowIfCancellationRequested();if(IsDisposed)return;
@@ -176,8 +229,8 @@ namespace PagePilot {
    catch(Exception e){Connect.Log("Navigation AI: "+e.GetType().Name);if(!IsDisposed)status.Text="识别失败："+(e is System.Net.Http.HttpRequestException?"模型服务连接失败，请检查网络与配置。":e.Message);}
    finally{navigationCancel=null;cancel.Dispose();if(!IsDisposed){button.Content="AI 识别";Find<Button>("Apply").IsEnabled=true;Find<Button>("Refresh").IsEnabled=true;}}
   }
-  internal void SetOutline(List<Heading> items){outlineVersion++;aiOutline=true;outline=items;outlineSnapshot=(string)doc.Content.Text;outlineEnd=(int)doc.Content.End;ruleSnapshot=Connect.ReadRulesText();RenderOutline();status.Text=$"AI 识别 {outline.Count} 个标题 · 文档未修改";}
+  internal void SetOutline(List<Heading> items){scanCancel?.Cancel();outlineVersion++;aiOutline=true;outline=items;outlineSnapshot=(string)doc.Content.Text;outlineEnd=(int)doc.Content.End;ruleSnapshot=Connect.ReadRulesText();RenderOutline();status.Text=$"AI 识别 {outline.Count} 个标题 · 文档未修改";}
   private void ApplyOutline(){if((string)doc.Content.Text!=outlineSnapshot)throw new Exception("文档已变化，请刷新结构。");NativeTools.Backup(doc);foreach(var item in outline)doc.Paragraphs[item.Paragraph].OutlineLevel=item.Level;status.Text="已应用大纲级别 · 可使用 Word 原生导航";}
-  protected override void Dispose(bool disposing){if(disposing){outlineVersion++;navigationCancel?.Cancel();searchCancel?.Cancel();highlightTimer.Dispose();highlight?.Dispose();searchVersion++;timer.Dispose();searchTimer.Dispose();}base.Dispose(disposing);}
+  protected override void Dispose(bool disposing){if(disposing){outlineVersion++;scanCancel?.Cancel();navigationCancel?.Cancel();searchCancel?.Cancel();highlightTimer.Dispose();highlight?.Dispose();searchVersion++;timer.Dispose();searchTimer.Dispose();}base.Dispose(disposing);}
  }
 }

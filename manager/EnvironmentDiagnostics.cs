@@ -30,7 +30,7 @@ namespace PagePilot.Deployment {
    report.AppendLine("\r\n["+title+"]");try{action();}catch(Exception ex){report.AppendLine("收集失败："+ex.GetType().Name+" HRESULT=0x"+ex.HResult.ToString("X8")+" "+ex.Message);}
   }
   static string EnvironmentReport(){
-   var sb=new StringBuilder();sb.AppendLine("PagePilot 0.4.4 · 扩展环境诊断 · UTC "+DateTime.UtcNow.ToString("o"));
+   var sb=new StringBuilder();sb.AppendLine("PagePilot 0.4.5 · 扩展环境诊断 · UTC "+DateTime.UtcNow.ToString("o"));
    DiagnosticSection(sb,"系统与管理器",()=>{
     sb.AppendLine("系统位数="+(Environment.Is64BitOperatingSystem?64:32)+" · 管理器位数="+(Environment.Is64BitProcess?64:32)+" · CLR="+Environment.Version);
     using(var process=Process.GetCurrentProcess()){sb.AppendLine("Manager PID="+process.Id+" · Session="+process.SessionId+" · "+ProcessSecurity(process));}

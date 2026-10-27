@@ -2,6 +2,9 @@ const fs = require('node:fs');
 const path = require('node:path');
 const file = 'dist/renderer/js/index.TlLbGKvw.js';
 function apply(patch, append) {
+  // Preserve rejected MCP operations as tool errors, not successful Error objects.
+  patch(file, 'try{return await iu?.(su,lu)}catch(cu){return cu}',
+    'try{return await iu?.(su,lu)}catch(cu){throw cu}');
   patch(file, 'preserveReasoning:nu.provider===ModelProviderEnum.DeepSeek}',
     'preserveReasoning:nu.provider===ModelProviderEnum.DeepSeek||pagepilotHistory.isDeepSeek(Du.modelId,Du.options?.apiHost)}');
   // Keep the pinned upstream converter for content types and error formatting.
