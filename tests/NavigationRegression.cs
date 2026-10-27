@@ -16,7 +16,11 @@ class NavigationRegression {
   var longTitle=P(new string('长',180),3);Assert(Run(longTitle)[0].Level==3,"Explicit outline overrides length");
   var styled=P("没有编号的标题");styled.Style="标题 2";Assert(Run(styled)[0].Level==2,"Localized style");
   var toc=P("1. Introduction",1);toc.InToc=true;Assert(Run(toc).Count==0,"TOC duplicate excluded");
-  var table=P("1. 数据");table.InTable=true;Assert(Run(table).Count==0,"Table false positive excluded");table.OutlineLevel=2;Assert(Run(table).Count==1,"Explicit table heading retained");
+  var table=P("1. 数据");table.InTable=true;Assert(Run(table).Count==0,"Table false positive excluded");table.OutlineLevel=2;Assert(Run(table).Count==0,"Accidental table outline excluded");table.Style="Heading 2";Assert(Run(table).Count==1,"Explicit table heading retained");
+  foreach(string t in new[]{"ζ(s)=ξ(1-s)","25 October 2022","2022-2023","Figure 1. Results","π"})Assert(Run(P(t,1)).Count==0,"Reject even with accidental outline: "+t);
+  var math=P("ζs",1);math.HasMath=true;math.NonMathText="(1)";Assert(Run(math).Count==0,"OMML equation excluded before explicit outline");math.Text="2. Zeta function ζ(s)";math.NonMathText="2. Zeta function";Assert(Run(math).Count==1,"Real heading with inline math retained");
+  var title=P("Document title",1);title.Style="Title";Assert(Run(title).Count==0,"Built-in title excluded");Assert(NavigationEngine.Analyze(new[]{title},Engine.Defaults,default(System.Threading.CancellationToken),new NavigationAppearance{IncludeDocumentTitle=true}).Count==1,"Title opt-in");
+  title.Style="Heading 1";title.Paragraph=1;title.Size=24;title.Bold=true;var intro=P("Introduction",1);intro.Paragraph=3;Assert(Run(title,intro).Count==1,"Misused heading style on cover excluded");
   var list=P("1. ordinary list");list.ListLevel=1;Assert(Run(list).Count==0,"Ordinary automatic lists excluded");list.Bold=true;Assert(Run(list).Count==1,"Formatted numbered heading");
   var levels=Run(P("第一篇 理论"),P("第一章 导论"),P("第一节 范围"));Assert(levels.Select(x=>x.Level).SequenceEqual(new[]{1,2,3}),"Part chapter section hierarchy");
   levels=Run(P("一、总则"),P("（一）范围"),P("1. 对象"),P("（1）细节"));Assert(levels.Select(x=>x.Level).SequenceEqual(new[]{1,2,3,4}),"Chinese numeric hierarchy");

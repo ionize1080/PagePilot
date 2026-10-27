@@ -1,0 +1,8 @@
+{
+  "documents": 50,
+  "paragraphs": 18442,
+  "selectedAnnotationAndIntegrityChecks": 133,
+  "medianWordMs": 3461.0,
+  "maxWordMs": 43193,
+  "note": "Includes Word opening, metadata reading, analysis and native range checks; not exhaustive heading accuracy."
+}

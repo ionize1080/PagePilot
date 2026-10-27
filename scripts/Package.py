@@ -7,7 +7,7 @@ import zipfile
 parser=argparse.ArgumentParser()
 parser.add_argument('--output',required=True)
 parser.add_argument('--chatbox-source',required=True)
-parser.add_argument('--version',default='0.4.5')
+parser.add_argument('--version',default='0.4.6')
 args=parser.parse_args()
 repo=Path(__file__).resolve().parents[1]
 out=Path(args.output).resolve()
@@ -27,7 +27,7 @@ with zipfile.ZipFile(portable,'w',zipfile.ZIP_DEFLATED,compresslevel=6) as z:
         # Runtime node_modules are required; filter only caches here.
         if p.is_dir():
             for f in sorted(p.rglob('*')):
-                if f.is_file() and not {'__pycache__','.git','.pytest_cache'}&set(f.relative_to(p).parts):
+                if f.is_file() and f.name.lower()!='debug.log' and not {'__pycache__','.git','.pytest_cache'}&set(f.relative_to(p).parts):
                     z.write(f,str(Path('PagePilot')/name/f.relative_to(p)))
         else:z.write(p,'PagePilot/'+name)
     for name in ['scripts','docs']:

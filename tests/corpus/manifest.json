@@ -1,0 +1,768 @@
+[
+  {
+    "url": "https://jwc.cczu.edu.cn/_upload/article/files/58/11/55471e3b4782ae2140adde53fb21/dfa04a6a-7cf4-41e1-b57d-6f627ce929bb.docx",
+    "source": "https://jwc.cczu.edu.cn/2025/1119/c14599a404901/page.htm",
+    "language": "zh",
+    "title": "常州大学理工类论文撰写规范 A",
+    "file": "bf958006598806b3.docx",
+    "sha256": "bf958006598806b3dcce042dccefe20ca129fe60e8ba2b0209951a43724a3a55",
+    "bytes": 360363,
+    "expectedHeadings": [
+      "一、毕业论文（设计）整体要求"
+    ],
+    "excludedSnippets": [
+      "常州大学本科生毕业论文（设计）撰写规范要求"
+    ],
+    "annotationScope": "Selected section/cover/date/table checks; not exhaustive ground truth."
+  },
+  {
+    "url": "https://jwc.cczu.edu.cn/_upload/article/files/58/11/55471e3b4782ae2140adde53fb21/1faf352d-c7e6-47e2-943f-215622592d9e.docx",
+    "source": "https://jwc.cczu.edu.cn/2025/1119/c14599a404901/page.htm",
+    "language": "zh",
+    "title": "常州大学理工类论文撰写规范 B",
+    "file": "c38eac966fd6e84e.docx",
+    "sha256": "c38eac966fd6e84ee5fe082c2d464de710a06fc5e26c85b45721d5b7f468016b",
+    "bytes": 360510,
+    "expectedHeadings": [
+      "一、毕业论文（设计）整体要求"
+    ],
+    "excludedSnippets": [
+      "常州大学本科生毕业论文（设计）撰写规范要求"
+    ],
+    "annotationScope": "Selected section/cover/date/table checks; not exhaustive ground truth."
+  },
+  {
+    "url": "https://jwc.cczu.edu.cn/_upload/article/files/58/11/55471e3b4782ae2140adde53fb21/318f0eab-8c10-4bb5-899e-dadd9874cc1a.docx",
+    "source": "https://jwc.cczu.edu.cn/2025/1119/c14599a404901/page.htm",
+    "language": "zh",
+    "title": "常州大学经管文法类论文撰写规范",
+    "file": "9077d2b7c1e8abe1.docx",
+    "sha256": "9077d2b7c1e8abe1ac7f6a3fd27589e14c18c411722ef37b000429fcb9b7b49c",
+    "bytes": 601067,
+    "expectedHeadings": [
+      "一、毕业论文（设计）整体要求"
+    ],
+    "excludedSnippets": [
+      "常州大学本科生毕业论文（设计）撰写规范要求"
+    ],
+    "annotationScope": "Selected section/cover/date/table checks; not exhaustive ground truth."
+  },
+  {
+    "url": "https://yjsh.sdut.edu.cn/_upload/article/files/08/2d/cd4ac8eb428296c74e08c9718faf/d45b5114-386b-433c-ba2e-5598dfc6fa3d.docx",
+    "source": "https://yjsh.sdut.edu.cn/2025/0314/c5159a537151/page.htm",
+    "language": "zh",
+    "title": "山东理工大学博士学位论文模板",
+    "file": "c9efb98cc2e5a9b2.docx",
+    "sha256": "c9efb98cc2e5a9b2bd01cebd38b96c97b32025751b69e2e9edc91ee71cd28ccd",
+    "bytes": 190062,
+    "expectedHeadings": [
+      "学位论文独创性声明"
+    ],
+    "excludedSnippets": [
+      "论文题名（中文）"
+    ],
+    "annotationScope": "Selected section/cover/date/table checks; not exhaustive ground truth."
+  },
+  {
+    "url": "https://yjsh.sdut.edu.cn/_upload/article/files/08/2d/cd4ac8eb428296c74e08c9718faf/dfa45170-19b3-47b7-ab4e-3fb3c5418653.docx",
+    "source": "https://yjsh.sdut.edu.cn/2025/0314/c5159a537151/page.htm",
+    "language": "zh",
+    "title": "山东理工大学学术硕士学位论文模板",
+    "file": "76333592298f2ab7.docx",
+    "sha256": "76333592298f2ab7adf4b1530855ba79ac1a915b5d01fb7e41d1f140d6d5d5db",
+    "bytes": 387796,
+    "expectedHeadings": [
+      "学位论文独创性声明"
+    ],
+    "excludedSnippets": [
+      "论文题名（中文）"
+    ],
+    "annotationScope": "Selected section/cover/date/table checks; not exhaustive ground truth."
+  },
+  {
+    "url": "https://yjsh.sdut.edu.cn/_upload/article/files/08/2d/cd4ac8eb428296c74e08c9718faf/2260afaf-ab0d-4d8e-ad9d-3ba559434aeb.docx",
+    "source": "https://yjsh.sdut.edu.cn/2025/0314/c5159a537151/page.htm",
+    "language": "zh",
+    "title": "山东理工大学专业硕士学位论文模板",
+    "file": "77dd13ea72a1ca85.docx",
+    "sha256": "77dd13ea72a1ca85da2e73b5637f0672a64caa4678a0ccf1572b19d5dafde8b7",
+    "bytes": 387317,
+    "expectedHeadings": [
+      "学位论文独创性声明"
+    ],
+    "excludedSnippets": [
+      "论文题名（中文）"
+    ],
+    "annotationScope": "Selected section/cover/date/table checks; not exhaustive ground truth."
+  },
+  {
+    "url": "https://geori.upc.edu.cn/_upload/article/files/c2/be/c0cce0094bb69ad3eb953aaf7bdf/4a98b082-5876-4c6d-8771-e7a0c3bee6c6.docx",
+    "source": "https://geori.upc.edu.cn/_t1434/yjsxwlwsxznhsxmb/list.htm",
+    "language": "zh",
+    "title": "中国石油大学学术博士论文模板",
+    "file": "7344bb7f39f8b0c3.docx",
+    "sha256": "7344bb7f39f8b0c38efbe691af0f2efe260401f4ec50e8cd0e8bc3983c19840e",
+    "bytes": 724377,
+    "expectedHeadings": [
+      "第2章 标题"
+    ],
+    "excludedSnippets": [
+      "中文题目（小二"
+    ],
+    "annotationScope": "Selected section/cover/date/table checks; not exhaustive ground truth."
+  },
+  {
+    "url": "https://geori.upc.edu.cn/_upload/article/files/c2/be/c0cce0094bb69ad3eb953aaf7bdf/f4db94d3-7bed-417a-90a5-1068042f9d99.docx",
+    "source": "https://geori.upc.edu.cn/_t1434/yjsxwlwsxznhsxmb/list.htm",
+    "language": "zh",
+    "title": "中国石油大学专业博士论文模板",
+    "file": "1896a7ef60dee01c.docx",
+    "sha256": "1896a7ef60dee01c18ed85e24d20203e2777d6849d1b42db2e53633cfccc0280",
+    "bytes": 761330,
+    "expectedHeadings": [
+      "第2章 标题"
+    ],
+    "excludedSnippets": [
+      "中文题目（小二"
+    ],
+    "annotationScope": "Selected section/cover/date/table checks; not exhaustive ground truth."
+  },
+  {
+    "url": "https://geori.upc.edu.cn/_upload/article/files/c2/be/c0cce0094bb69ad3eb953aaf7bdf/d9975759-f5e2-4cc9-899e-d823fd33dbb9.docx",
+    "source": "https://geori.upc.edu.cn/_t1434/yjsxwlwsxznhsxmb/list.htm",
+    "language": "zh",
+    "title": "中国石油大学学术硕士论文模板",
+    "file": "372caf9708c70f1a.docx",
+    "sha256": "372caf9708c70f1a02061adf9bfbcdbd1af76682cee7132ed3f75e492c73b7ef",
+    "bytes": 720997,
+    "expectedHeadings": [
+      "第2章 标题"
+    ],
+    "excludedSnippets": [
+      "中文题目（小二"
+    ],
+    "annotationScope": "Selected section/cover/date/table checks; not exhaustive ground truth."
+  },
+  {
+    "url": "https://geori.upc.edu.cn/_upload/article/files/c2/be/c0cce0094bb69ad3eb953aaf7bdf/d77ec2a2-e907-4fa2-967c-2bf9c72260b7.docx",
+    "source": "https://geori.upc.edu.cn/_t1434/yjsxwlwsxznhsxmb/list.htm",
+    "language": "zh",
+    "title": "中国石油大学专业硕士论文模板",
+    "file": "edaea013314956ee.docx",
+    "sha256": "edaea013314956ee9c669740637eb65f175e03dcb7c037d1c5c8d2fd0027cea3",
+    "bytes": 762059,
+    "expectedHeadings": [
+      "第2章 标题"
+    ],
+    "excludedSnippets": [
+      "中文题目（小二"
+    ],
+    "annotationScope": "Selected section/cover/date/table checks; not exhaustive ground truth."
+  },
+  {
+    "url": "https://geori.upc.edu.cn/_upload/article/files/c2/be/c0cce0094bb69ad3eb953aaf7bdf/3f9bcc98-1795-481b-99d4-11c43e24cd6a.docx",
+    "source": "https://geori.upc.edu.cn/_t1434/yjsxwlwsxznhsxmb/list.htm",
+    "language": "zh",
+    "title": "学科研究方向表",
+    "file": "2c5659e08bd1d244.docx",
+    "sha256": "2c5659e08bd1d244bb644286853bcd0f1c43f045cc40f37b7a25dbde2323232a",
+    "bytes": 18858,
+    "expectedHeadings": [],
+    "excludedSnippets": [
+      "学科名称"
+    ],
+    "annotationScope": "Selected section/cover/date/table checks; not exhaustive ground truth."
+  },
+  {
+    "url": "https://sfb.shnu.edu.cn/_upload/article/files/a6/78/ced8bae44546a3328692ddfc451b/c49b127e-91f0-4d3c-a417-bb616814a99a.docx",
+    "source": "https://sfb.shnu.edu.cn/e2/fc/c15136a844540/page.htm",
+    "language": "zh",
+    "title": "上海师范大学商学院论文格式要求",
+    "file": "43fdd80d8f995d79.docx",
+    "sha256": "43fdd80d8f995d7915d21d40c76cd0f0723c55ebeba0b590af3cea7cd79913aa",
+    "bytes": 244561,
+    "expectedHeadings": [
+      "版面要求"
+    ],
+    "excludedSnippets": [
+      "商学院毕业论文（设计）模板格式要求"
+    ],
+    "annotationScope": "Selected section/cover/date/table checks; not exhaustive ground truth."
+  },
+  {
+    "url": "https://sfb.shnu.edu.cn/_upload/article/files/a6/78/ced8bae44546a3328692ddfc451b/50d48f19-79bf-4cb8-9f79-67b161db5f51.docx",
+    "source": "https://sfb.shnu.edu.cn/e2/fc/c15136a844540/page.htm",
+    "language": "zh",
+    "title": "上海师范大学本科论文模板",
+    "file": "94d126266965f7c9.docx",
+    "sha256": "94d126266965f7c931b7def2162bdf0ae757e6b07623c264b3d9c019c4e894a9",
+    "bytes": 271247,
+    "expectedHeadings": [
+      "1.1 研究的背景"
+    ],
+    "excludedSnippets": [
+      "本 科 毕 业 论 文（设 计）"
+    ],
+    "annotationScope": "Selected section/cover/date/table checks; not exhaustive ground truth."
+  },
+  {
+    "url": "https://assets.publishing.service.gov.uk/media/6a671fb91557992b0f3dba4f/Appendix_1_s55_checklist_EXTERNAL_July_2026.docx",
+    "source": "https://www.gov.uk/guidance/nationally-significant-infrastructure-projects-advice-on-the-preparation-and-submission-of-application-documents",
+    "language": "en",
+    "title": "Appendix 1:  Application index",
+    "file": "4aa34a0172498e0a.docx",
+    "sha256": "4aa34a0172498e0a9715b45cc9992add52aba839811e76e3b6a095320680a6a3",
+    "bytes": 95399,
+    "expectedHeadings": [
+      "Section 55 Acceptance of Applications Checklist"
+    ],
+    "excludedSnippets": [],
+    "annotationScope": "Selected section/cover/date/table checks; not exhaustive ground truth."
+  },
+  {
+    "url": "https://assets.publishing.service.gov.uk/media/683842e6e0f10eed80aafac9/13076_-_25_05_15_Appendix_2_S55_checklist_EXTERNAL_-_May_2025.docx",
+    "source": "https://www.gov.uk/guidance/nationally-significant-infrastructure-projects-advice-on-the-preparation-and-submission-of-application-documents",
+    "language": "cy",
+    "title": "Atodiad 2: Rhestr wirio adran 55 yr ymgeisydd",
+    "file": "edf00f217c2fcc42.docx",
+    "sha256": "edf00f217c2fcc426b9518d070ca3a0a40430fe8cd90e9318cc498d925d72ce6",
+    "bytes": 89147,
+    "expectedHeadings": [],
+    "excludedSnippets": [
+      "Adran 55"
+    ],
+    "annotationScope": "Selected section/cover/date/table checks; not exhaustive ground truth."
+  },
+  {
+    "url": "https://assets.publishing.service.gov.uk/media/6a26d314f56856fd11c0b191/highways-maintenance-reports-template.docx",
+    "source": "https://www.gov.uk/government/publications/completing-a-local-highways-maintenance-transparency-report",
+    "language": "en",
+    "title": "Highways maintenance transparency reports template",
+    "file": "eb468aeba7ed8ff0.docx",
+    "sha256": "eb468aeba7ed8ff0bac3382ddeaa8e56dc859bc9dc3d988d4389a1fe508dfc02",
+    "bytes": 81163,
+    "expectedHeadings": [
+      "A1 – What we are responsible for maintaining"
+    ],
+    "excludedSnippets": [],
+    "annotationScope": "Selected section/cover/date/table checks; not exhaustive ground truth."
+  },
+  {
+    "url": "https://assets.publishing.service.gov.uk/media/62d95d2ad3bf7f2861b8942d/Onward_Sale_Completion_Notification_form.docx",
+    "source": "https://www.gov.uk/guidance/capital-funding-guide/14-strategic-partnerships",
+    "language": "en",
+    "title": "Onward Sale Completion Notification form",
+    "file": "7c0f84497eabbe58.docx",
+    "sha256": "7c0f84497eabbe583fe3ac7e12dec0dc59a801b41407a450970c4211cbe314ea",
+    "bytes": 45248,
+    "expectedHeadings": [
+      "1. Strategic Partner - Contact Details"
+    ],
+    "excludedSnippets": [],
+    "annotationScope": "Selected section/cover/date/table checks; not exhaustive ground truth."
+  },
+  {
+    "url": "https://assets.publishing.service.gov.uk/media/62d95d3ce90e071e7a0749a6/Onward_Disponee_Acknowledgement_Letter_.docx",
+    "source": "https://www.gov.uk/guidance/capital-funding-guide/14-strategic-partnerships",
+    "language": "en",
+    "title": "Onward Disponee Acknowledgement letter",
+    "file": "82fcee6b606019b2.docx",
+    "sha256": "82fcee6b606019b26aaac356ac386f01ae5125bee0bb8cd697e119831408df6f",
+    "bytes": 33287,
+    "expectedHeadings": [],
+    "excludedSnippets": [
+      "25 October 2022"
+    ],
+    "annotationScope": "Selected section/cover/date/table checks; not exhaustive ground truth."
+  },
+  {
+    "url": "https://assets.publishing.service.gov.uk/media/6058831cd3bf7f2f0cd61cba/pay-flex-pro-forma-2_.docx",
+    "source": "https://www.gov.uk/government/publications/civil-service-pay-remit-guidance-202122",
+    "language": "en",
+    "title": "Pay Flexibility Pro Forma",
+    "file": "75ded2b0af055aaa.docx",
+    "sha256": "75ded2b0af055aaac02d0e282c6cf1c72116cd6fd40dfd4e900eb1a6bc64e416",
+    "bytes": 13284,
+    "expectedHeadings": [
+      "Section A: Executive Summary"
+    ],
+    "excludedSnippets": [
+      "Pay flexibility pro forma"
+    ],
+    "annotationScope": "Selected section/cover/date/table checks; not exhaustive ground truth."
+  },
+  {
+    "url": "https://assets.publishing.service.gov.uk/media/67ed5038e9c76fa33048c6af/MHRA_Clinical_AR_Template.docx",
+    "source": "https://www.gov.uk/guidance/national-assessment-procedure-for-medicines",
+    "language": "en",
+    "title": "MHRA Clinical AR Template",
+    "file": "4cda5f47c038979e.docx",
+    "sha256": "4cda5f47c038979eea4eca3cbea4a1d37c3257d694abbc1529ee92cb52ca6fad",
+    "bytes": 251566,
+    "expectedHeadings": [
+      "Administrative information"
+    ],
+    "excludedSnippets": [
+      "Clinical Assessment Report"
+    ],
+    "annotationScope": "Selected section/cover/date/table checks; not exhaustive ground truth."
+  },
+  {
+    "url": "https://assets.publishing.service.gov.uk/media/69899b166da2dee8230a9b8e/Appeal_Form_UPDATE_18-11-2025.docx",
+    "source": "https://www.gov.uk/government/publications/schedule-14-appeal-form",
+    "language": "en",
+    "title": "Schedule 14 appeal form",
+    "file": "fbad5350a6f6964a.docx",
+    "sha256": "fbad5350a6f6964a0bedf3fb722efdaa500d7978bff912e1366fc41fc4285505",
+    "bytes": 57458,
+    "expectedHeadings": [],
+    "excludedSnippets": [
+      "APPEAL FORM"
+    ],
+    "annotationScope": "Selected section/cover/date/table checks; not exhaustive ground truth."
+  },
+  {
+    "url": "https://assets.publishing.service.gov.uk/media/5e41b8cf40f0b60917d65944/Concept_Bid_Form_2020.docx",
+    "source": "https://www.gov.uk/government/news/british-embassy-quito-calls-for-bids-for-its-bilateral-cooperation-fund-2020-21",
+    "language": "en",
+    "title": "Concept Bid Form_2020.docx",
+    "file": "4c98fbaa855e2e14.docx",
+    "sha256": "4c98fbaa855e2e1465000669c5ec1413f5bf9a051b76f702f72c6e7497b72c40",
+    "bytes": 91386,
+    "expectedHeadings": [],
+    "excludedSnippets": [
+      "PROJECT CONCEPT FORM"
+    ],
+    "annotationScope": "Selected section/cover/date/table checks; not exhaustive ground truth."
+  },
+  {
+    "url": "https://assets.publishing.service.gov.uk/media/5e41b8ede5274a08e745c94c/Project_Proposal_Form__Full_.docx",
+    "source": "https://www.gov.uk/government/news/british-embassy-quito-calls-for-bids-for-its-bilateral-cooperation-fund-2020-21",
+    "language": "en",
+    "title": "Project Proposal Form (Full).doc",
+    "file": "3688ff1b29d704ae.docx",
+    "sha256": "3688ff1b29d704ae100f054981b14575a4365c9ae37bf8d56b6663d0bfc8397f",
+    "bytes": 47039,
+    "expectedHeadings": [],
+    "excludedSnippets": [],
+    "annotationScope": "Selected section/cover/date/table checks; not exhaustive ground truth."
+  },
+  {
+    "url": "https://assets.publishing.service.gov.uk/media/640067008fa8f527f4f54b37/Applicant_s_response_template.docx",
+    "source": "https://www.gov.uk/government/publications/response-template-for-applicants",
+    "language": "en",
+    "title": "Applicant's response template",
+    "file": "3d709b94da96e91c.docx",
+    "sha256": "3d709b94da96e91c83e7c901b3b1dca1b4d1403f0602696eff8c77973d2aae92",
+    "bytes": 67023,
+    "expectedHeadings": [
+      "MAJOR OBJECTIONS"
+    ],
+    "excludedSnippets": [
+      "Responses to the questions raised by the MHRA"
+    ],
+    "annotationScope": "Selected section/cover/date/table checks; not exhaustive ground truth."
+  },
+  {
+    "url": "https://assets.publishing.service.gov.uk/media/62f0cd45e90e0714343544f3/children-adopted-from-care-and-the-pupil-premium-template-letter.docx",
+    "source": "https://www.gov.uk/guidance/alternative-provision-ap-census/data-items",
+    "language": "en",
+    "title": "template letter (DOCX, 20KB)",
+    "file": "319d96f00ccdf97b.docx",
+    "sha256": "319d96f00ccdf97b435173ec30ae026c3e4e1c70d5407f47d1bee4861e341c11",
+    "bytes": 55173,
+    "expectedHeadings": [],
+    "excludedSnippets": [],
+    "annotationScope": "Selected section/cover/date/table checks; not exhaustive ground truth."
+  },
+  {
+    "url": "https://assets.publishing.service.gov.uk/media/5a7b85ed40f0b62826a041fb/1.1.1_Example_of_Concept_Bid_version_1.docx",
+    "source": "https://www.gov.uk/government/news/latin-america-prosperity-fund-regional-strategy-201415",
+    "language": "en",
+    "title": "1.1.1 Example of Concept Bid version 1.doc",
+    "file": "619514d7502485b3.docx",
+    "sha256": "619514d7502485b36c8453d4838163e9d307adfb445d1cd8224afc34a89ab9d4",
+    "bytes": 39069,
+    "expectedHeadings": [],
+    "excludedSnippets": [
+      "British Embassy Chile Prosperity Fund Project Concept Form"
+    ],
+    "annotationScope": "Selected section/cover/date/table checks; not exhaustive ground truth."
+  },
+  {
+    "url": "https://assets.publishing.service.gov.uk/media/5a7bab6b40f0b638d61be2cf/1.2._How_to_complete_Concept_Bid.docx",
+    "source": "https://www.gov.uk/government/news/latin-america-prosperity-fund-regional-strategy-201415",
+    "language": "en",
+    "title": "1.2. How to complete Concept Bid",
+    "file": "e7ba52bc150f4e43.docx",
+    "sha256": "e7ba52bc150f4e4328f53297579ee370779dc52150e0b0df10d381a836449271",
+    "bytes": 59842,
+    "expectedHeadings": [
+      "Annex A – Example of an activity Based budget"
+    ],
+    "excludedSnippets": [
+      "How to complete the Concept Bid"
+    ],
+    "annotationScope": "Selected section/cover/date/table checks; not exhaustive ground truth."
+  },
+  {
+    "url": "https://assets.publishing.service.gov.uk/media/65f1a247981227a772f6136e/request-flexible-working-docx-form.docx",
+    "source": "https://www.gov.uk/government/publications/the-right-to-request-flexible-working-form",
+    "language": "en",
+    "title": "The right to request flexible working: application form template (.docx)",
+    "file": "055fe6227daa62d6.docx",
+    "sha256": "055fe6227daa62d63d0764158214c9a7bdac55427b37cd27229118efa65bc673",
+    "bytes": 20535,
+    "expectedHeadings": [
+      "Personal Details"
+    ],
+    "excludedSnippets": [
+      "The right to request flexible working"
+    ],
+    "annotationScope": "Selected section/cover/date/table checks; not exhaustive ground truth."
+  },
+  {
+    "url": "https://assets.publishing.service.gov.uk/media/68d50dff9ce370a7e0a0fc9a/Template_ES1.docx",
+    "source": "https://www.gov.uk/government/publications/financial-remedy-summary-of-case-form-es1",
+    "language": "en",
+    "title": "Financial remedy summary of case: Form ES1 - for Microsoft Word",
+    "file": "d4a31c4af8f0a31f.docx",
+    "sha256": "d4a31c4af8f0a31f5022330e4072b7cd4719a9c97eafe03f969a77350b954ea3",
+    "bytes": 22923,
+    "expectedHeadings": [],
+    "excludedSnippets": [
+      "NAME OF COURT"
+    ],
+    "annotationScope": "Selected section/cover/date/table checks; not exhaustive ground truth."
+  },
+  {
+    "url": "https://assets.publishing.service.gov.uk/media/69e5f3e384ac36aaf2cc92af/CY_Template_ES1.docx",
+    "source": "https://www.gov.uk/government/publications/financial-remedy-summary-of-case-form-es1",
+    "language": "cy",
+    "title": "Rhwymedi ariannol - crynodeb o'r achos: Ffurflen ES1 - ar gyfer Microsoft Word",
+    "file": "5b8948b6ed1ce9e5.docx",
+    "sha256": "5b8948b6ed1ce9e5713fca71dd7cff0c18e77ae15a4c078c92b782a355e11d73",
+    "bytes": 22841,
+    "expectedHeadings": [],
+    "excludedSnippets": [
+      "ENW’R ACHOS"
+    ],
+    "annotationScope": "Selected section/cover/date/table checks; not exhaustive ground truth."
+  },
+  {
+    "url": "https://assets.publishing.service.gov.uk/media/5f847eddd3bf7f6b9af0365a/Good_estates_governance.docx",
+    "source": "https://www.gov.uk/guidance/good-estate-management-for-schools/tools-and-checklists",
+    "language": "en",
+    "title": "Good estate governance (DOCX, 871KB)",
+    "file": "80669ab7673fcdfb.docx",
+    "sha256": "80669ab7673fcdfb0fcf596c954e9534d61a54ed1b10457213c619f3e680bcf5",
+    "bytes": 893679,
+    "expectedHeadings": [],
+    "excludedSnippets": [
+      "Good estate governance"
+    ],
+    "annotationScope": "Selected section/cover/date/table checks; not exhaustive ground truth."
+  },
+  {
+    "url": "https://assets.publishing.service.gov.uk/media/5f84832c8fa8f50458d347ec/Estate_projects_checklist.docx",
+    "source": "https://www.gov.uk/guidance/good-estate-management-for-schools/tools-and-checklists",
+    "language": "en",
+    "title": "Estate projects checklist (DOCX, 871KB)",
+    "file": "d00e609a4153af2b.docx",
+    "sha256": "d00e609a4153af2bb29122c62bb985f035af886a670dac1c357b616c70685cca",
+    "bytes": 928986,
+    "expectedHeadings": [],
+    "excludedSnippets": [
+      "Estates projects - process checklist"
+    ],
+    "annotationScope": "Selected section/cover/date/table checks; not exhaustive ground truth."
+  },
+  {
+    "url": "https://assets.publishing.service.gov.uk/media/653a2d6980884d000df71b36/Avon_and_Somerset_MAPPA_Annual_Report_2022_to_2023.docx",
+    "source": "https://www.gov.uk/government/publications/multi-agency-public-protection-arrangements-mappa-annual-reports-2022-to-2023",
+    "language": "en",
+    "title": "Avon and Somerset MAPPA annual report 2022 to '23",
+    "sha256": "980ed8687a67added9989f69e617cec0dfe002bac2927965ce1a8ff1f3461aec",
+    "file": "980ed8687a67adde.docx",
+    "bytes": 3797678,
+    "expectedHeadings": [
+      "Introduction"
+    ],
+    "excludedSnippets": [
+      "Area name here"
+    ],
+    "annotationScope": "Selected section/cover/date/table checks; not exhaustive ground truth."
+  },
+  {
+    "url": "https://assets.publishing.service.gov.uk/media/653a2e3680884d0013f71b70/Bedfordshire_MAPPA_Annual_Report_2022_to_2023.docx",
+    "source": "https://www.gov.uk/government/publications/multi-agency-public-protection-arrangements-mappa-annual-reports-2022-to-2023",
+    "language": "en",
+    "title": "Bedfordshire MAPPA annual report 2022 to '23",
+    "sha256": "8b7d81fefcab770b019dae7ad606faa6f42f2ed82424525ed91ef97b0895e73d",
+    "file": "8b7d81fefcab770b.docx",
+    "bytes": 1048568,
+    "expectedHeadings": [
+      "Introduction"
+    ],
+    "excludedSnippets": [
+      "BEDFORDSHIRE MAPPA ANNUAL REPORT"
+    ],
+    "annotationScope": "Selected section/cover/date/table checks; not exhaustive ground truth."
+  },
+  {
+    "url": "https://assets.publishing.service.gov.uk/media/653a2e51d10f35000d9a69b6/Cambridgeshire_MAPPA_Annual_Report_2022_to_2023.docx",
+    "source": "https://www.gov.uk/government/publications/multi-agency-public-protection-arrangements-mappa-annual-reports-2022-to-2023",
+    "language": "en",
+    "title": "Cambridgeshire MAPPA annual report 2022 to '23",
+    "sha256": "80ec5977e755f54ae2f4fd075ebf5bae0829f2cdbcceb1c78fb715eddc2551d5",
+    "file": "80ec5977e755f54a.docx",
+    "bytes": 435051,
+    "expectedHeadings": [
+      "Introduction"
+    ],
+    "excludedSnippets": [
+      "Area name here"
+    ],
+    "annotationScope": "Selected section/cover/date/table checks; not exhaustive ground truth."
+  },
+  {
+    "url": "https://assets.publishing.service.gov.uk/media/653a2e6cd10f3500139a699b/Cheshire_MAPPA_Annual_Report_2022_to_2023.docx",
+    "source": "https://www.gov.uk/government/publications/multi-agency-public-protection-arrangements-mappa-annual-reports-2022-to-2023",
+    "language": "en",
+    "title": "Cheshire MAPPA annual report 2022 to '23",
+    "sha256": "ad6b32e4f818ae9e637a38e12b016a243ef77ac70b7b3cbe4907193e3f2b38f8",
+    "file": "ad6b32e4f818ae9e.docx",
+    "bytes": 1081360,
+    "expectedHeadings": [
+      "Introduction"
+    ],
+    "excludedSnippets": [
+      "Area name here"
+    ],
+    "annotationScope": "Selected section/cover/date/table checks; not exhaustive ground truth."
+  },
+  {
+    "url": "https://assets.publishing.service.gov.uk/media/653a2ec180884d000df71b3b/Cleveland_MAPPA_Annual_Report_2022_to_2023.docx",
+    "source": "https://www.gov.uk/government/publications/multi-agency-public-protection-arrangements-mappa-annual-reports-2022-to-2023",
+    "language": "en",
+    "title": "Cleveland MAPPA annual report 2022 to '23",
+    "sha256": "b16cca9649768f49d64125e1a08a19bc87e8d4555c68036c2bc25325e0ff3de8",
+    "file": "b16cca9649768f49.docx",
+    "bytes": 4508725,
+    "expectedHeadings": [
+      "Introduction"
+    ],
+    "excludedSnippets": [
+      "MAPPA Cleveland"
+    ],
+    "annotationScope": "Selected section/cover/date/table checks; not exhaustive ground truth."
+  },
+  {
+    "url": "https://assets.publishing.service.gov.uk/media/653a3a4de6c968000daa9b60/County_Durham_MAPPA_Annual_Report_2022_to_2023.docx",
+    "source": "https://www.gov.uk/government/publications/multi-agency-public-protection-arrangements-mappa-annual-reports-2022-to-2023",
+    "language": "en",
+    "title": "County Durham MAPPA annual report 2022 to '23",
+    "sha256": "8d054f67ffbe5e7c023aabd236073f3be9f81896184ab0360a35bca1482e7639",
+    "file": "8d054f67ffbe5e7c.docx",
+    "bytes": 5890768,
+    "expectedHeadings": [
+      "Intro"
+    ],
+    "excludedSnippets": [
+      "Area name here"
+    ],
+    "annotationScope": "Selected section/cover/date/table checks; not exhaustive ground truth."
+  },
+  {
+    "url": "https://assets.publishing.service.gov.uk/media/653a2f3580884d000df71b3e/Cumbria_MAPPA_Annual_Report_2022_to_2023.docx",
+    "source": "https://www.gov.uk/government/publications/multi-agency-public-protection-arrangements-mappa-annual-reports-2022-to-2023",
+    "language": "en",
+    "title": "Cumbria MAPPA annual report 2022 to '23",
+    "sha256": "2f7f3bb8898c01162e34a6327239e68542806a195eca07916651ce3858978d0b",
+    "file": "2f7f3bb8898c0116.docx",
+    "bytes": 604598,
+    "expectedHeadings": [
+      "Intro"
+    ],
+    "excludedSnippets": [
+      "Area name here"
+    ],
+    "annotationScope": "Selected section/cover/date/table checks; not exhaustive ground truth."
+  },
+  {
+    "url": "https://assets.publishing.service.gov.uk/media/653a2f5ad10f35000d9a69b8/Devon_and_Cornwall_MAPPA_Annual_Report_2022_to_2023.docx",
+    "source": "https://www.gov.uk/government/publications/multi-agency-public-protection-arrangements-mappa-annual-reports-2022-to-2023",
+    "language": "en",
+    "title": "Devon and Cornwall MAPPA annual report 2022 to '23",
+    "sha256": "b8e751f0d2409b3410eecf8b17d7e64543a89e58e2219ead6b3cd24f87fec208",
+    "file": "b8e751f0d2409b34.docx",
+    "bytes": 463205,
+    "expectedHeadings": [
+      "Introduction"
+    ],
+    "excludedSnippets": [
+      "Area name here"
+    ],
+    "annotationScope": "Selected section/cover/date/table checks; not exhaustive ground truth."
+  },
+  {
+    "url": "https://assets.publishing.service.gov.uk/media/653a2f6f80884d0013f71b75/Dorset_MAPPA_Annual_Report_2022_to_2023.docx",
+    "source": "https://www.gov.uk/government/publications/multi-agency-public-protection-arrangements-mappa-annual-reports-2022-to-2023",
+    "language": "en",
+    "title": "Dorset MAPPA annual report 2022 to '23",
+    "sha256": "9098e01d5aa4efac7ea7c605a6f21c040f37ce1a933a9c101be2e6845955caca",
+    "file": "9098e01d5aa4efac.docx",
+    "bytes": 414051,
+    "expectedHeadings": [
+      "Introduction"
+    ],
+    "excludedSnippets": [
+      "Area name here"
+    ],
+    "annotationScope": "Selected section/cover/date/table checks; not exhaustive ground truth."
+  },
+  {
+    "url": "https://assets.publishing.service.gov.uk/media/653a2fbd80884d000df71b40/Dyfed_Powys_MAPPA_Annual_Report_2022_to_2023_-_English.docx",
+    "source": "https://www.gov.uk/government/publications/multi-agency-public-protection-arrangements-mappa-annual-reports-2022-to-2023",
+    "language": "en",
+    "title": "Dyfed Powys MAPPA annual report 2022 to '23 - English",
+    "sha256": "5a2ef704e975625fb1f7e143a7762297584cc80b4918a6f81feb7434d8a45da0",
+    "file": "5a2ef704e975625f.docx",
+    "bytes": 875360,
+    "expectedHeadings": [
+      "Introduction"
+    ],
+    "excludedSnippets": [
+      "Area name here"
+    ],
+    "annotationScope": "Selected section/cover/date/table checks; not exhaustive ground truth."
+  },
+  {
+    "url": "https://assets.publishing.service.gov.uk/media/653a2fcee6c968000daa9b4a/Dyfed_Powys_MAPPA_Annual_Report_2022_to_2023_-_Welsh.docx",
+    "source": "https://www.gov.uk/government/publications/multi-agency-public-protection-arrangements-mappa-annual-reports-2022-to-2023",
+    "language": "cy",
+    "title": "Dyfed Powys MAPPA annual report 2022 to '23 - Welsh translation",
+    "sha256": "18c230681503fe78dd9f82422b0017713dd7ddefff83e0d4d7d1ff3ae789c6f8",
+    "file": "18c230681503fe78.docx",
+    "bytes": 878842,
+    "expectedHeadings": [
+      "Cyflwyniad"
+    ],
+    "excludedSnippets": [
+      "Area name here"
+    ],
+    "annotationScope": "Selected section/cover/date/table checks; not exhaustive ground truth."
+  },
+  {
+    "url": "https://assets.publishing.service.gov.uk/media/653a300e80884d000df71b41/Essex_MAPPA_Annual_Report_2022_to_2023.docx",
+    "source": "https://www.gov.uk/government/publications/multi-agency-public-protection-arrangements-mappa-annual-reports-2022-to-2023",
+    "language": "en",
+    "title": "Essex MAPPA annual report 2022 to '23",
+    "sha256": "35734357860b6d0188bb073df26144dfc0d3a28c2c1dcd4ebc7a299835fce0fc",
+    "file": "35734357860b6d01.docx",
+    "bytes": 635992,
+    "expectedHeadings": [
+      "Intro"
+    ],
+    "excludedSnippets": [
+      "Area name here"
+    ],
+    "annotationScope": "Selected section/cover/date/table checks; not exhaustive ground truth."
+  },
+  {
+    "url": "https://assets.publishing.service.gov.uk/media/653a3517e6c968000daa9b56/Gloucestershire_MAPPA_Annual_Report_2022_to_2023.docx",
+    "source": "https://www.gov.uk/government/publications/multi-agency-public-protection-arrangements-mappa-annual-reports-2022-to-2023",
+    "language": "en",
+    "title": " Gloucestershire MAPPA annual report 2022 to '23",
+    "sha256": "6be2b8501544e00f138e65dec96415bcb6e53b442c3d26df1718ef2f474e65bc",
+    "file": "6be2b8501544e00f.docx",
+    "bytes": 403316,
+    "expectedHeadings": [
+      "Intro"
+    ],
+    "excludedSnippets": [
+      "Area name here"
+    ],
+    "annotationScope": "Selected section/cover/date/table checks; not exhaustive ground truth."
+  },
+  {
+    "url": "https://assets.publishing.service.gov.uk/media/653a352cd10f3500139a69a5/Greater_Manchester_MAPPA_Annual_Report_template_2022_to_2023.docx",
+    "source": "https://www.gov.uk/government/publications/multi-agency-public-protection-arrangements-mappa-annual-reports-2022-to-2023",
+    "language": "en",
+    "title": "Greater Manchester MAPPA annual report 2022 to '23",
+    "sha256": "bbadccf994cc388a410a8487962f4327867d90d7e004d0f22b6be740a5a2dfbc",
+    "file": "bbadccf994cc388a.docx",
+    "bytes": 664160,
+    "expectedHeadings": [
+      "Intro"
+    ],
+    "excludedSnippets": [
+      "Area name here"
+    ],
+    "annotationScope": "Selected section/cover/date/table checks; not exhaustive ground truth."
+  },
+  {
+    "url": "https://assets.publishing.service.gov.uk/media/653a359a80884d000df71b48/Gwent_MAPPA_Annual_Report_2022_to_2023_-_English.docx",
+    "source": "https://www.gov.uk/government/publications/multi-agency-public-protection-arrangements-mappa-annual-reports-2022-to-2023",
+    "language": "en",
+    "title": "Gwent MAPPA annual report 2022 to '23 - English",
+    "sha256": "9d3e25a8aebd95dc1dc740897d081b9054fe681937142a388320e80343ef9a79",
+    "file": "9d3e25a8aebd95dc.docx",
+    "bytes": 786503,
+    "expectedHeadings": [
+      "Intro"
+    ],
+    "excludedSnippets": [
+      "Area name here"
+    ],
+    "annotationScope": "Selected section/cover/date/table checks; not exhaustive ground truth."
+  },
+  {
+    "url": "https://assets.publishing.service.gov.uk/media/653a35c5d10f3500139a69a7/Gwent_MAPPA_Annual_Report_2022_to_2023_-_Welsh_translation.docx",
+    "source": "https://www.gov.uk/government/publications/multi-agency-public-protection-arrangements-mappa-annual-reports-2022-to-2023",
+    "language": "cy",
+    "title": "Gwent MAPPA annual report 2022 to '23 - Welsh translation",
+    "sha256": "3439e9b5d099ef70248a9b7f3d111847afab4ed03a3ba1192527b36f3d398f16",
+    "file": "3439e9b5d099ef70.docx",
+    "bytes": 783540,
+    "expectedHeadings": [
+      "Cyflwyniad"
+    ],
+    "excludedSnippets": [
+      "Enw'r ardal yma"
+    ],
+    "annotationScope": "Selected section/cover/date/table checks; not exhaustive ground truth."
+  },
+  {
+    "url": "https://assets.publishing.service.gov.uk/media/653a385780884d0013f71b8a/Hertfordshire_MAPPA_Annual_Report_2022_to_2023.docx",
+    "source": "https://www.gov.uk/government/publications/multi-agency-public-protection-arrangements-mappa-annual-reports-2022-to-2023",
+    "language": "en",
+    "title": "Hertfordshire MAPPA annual report 2022 to '23",
+    "sha256": "714325c089fbd8b4150b4f01fe099d6dfd4acfa5d2be874d4fa403af1bfbc6db",
+    "file": "714325c089fbd8b4.docx",
+    "bytes": 809090,
+    "expectedHeadings": [
+      "Introduction"
+    ],
+    "excludedSnippets": [
+      "Area name here"
+    ],
+    "annotationScope": "Selected section/cover/date/table checks; not exhaustive ground truth."
+  },
+  {
+    "url": "https://assets.publishing.service.gov.uk/media/653a388be6c968000daa9b5d/Kent_MAPPA_Annual_Report_2022_to_2023.docx",
+    "source": "https://www.gov.uk/government/publications/multi-agency-public-protection-arrangements-mappa-annual-reports-2022-to-2023",
+    "language": "en",
+    "title": "Kent MAPPA annual report 2022 to '23",
+    "sha256": "8d903c41618feec48d3140b01e115108b604a8903b5925efab6137da9858ec62",
+    "file": "8d903c41618feec4.docx",
+    "bytes": 554060,
+    "expectedHeadings": [
+      "Introduction"
+    ],
+    "excludedSnippets": [
+      "Area name here"
+    ],
+    "annotationScope": "Selected section/cover/date/table checks; not exhaustive ground truth."
+  }
+]

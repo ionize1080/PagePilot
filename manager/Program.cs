@@ -84,7 +84,7 @@ namespace PagePilot.Deployment {
     using(var user=Store(view)){
     if(operation=="disable"){foreach(var e in j.Entries)user.DeleteSubKeyTree(StorePath(e.Path),false);}
     else{
-     string assembly=testPrefix==""?AssemblyName.GetAssemblyName(Dll).FullName:"PagePilot, Version=0.4.5.0, Culture=neutral, PublicKeyToken=null";
+     string assembly=testPrefix==""?AssemblyName.GetAssemblyName(Dll).FullName:"PagePilot, Version=0.4.6.0, Culture=neutral, PublicKeyToken=null";
      for(int i=0;i<Classes.Length;i++){
       string path=@"Software\Classes\CLSID\"+Ids[i];using(var k=user.CreateSubKey(StorePath(path)))k.SetValue("",Classes[i]);
       // Match RegAsm's CodeBase representation. CLR COM activation treats escaped spaces differently.

@@ -1,3 +1,5 @@
+最新版本验证：[0.4.6 测试报告](TESTING-v0.4.6.md)，包含 50 份公开文档、真实 API、真实 Word 与 computer-use。
+
 # PagePilot 0.4.1 验证记录 — 2026-10-26
 
 本次环境：Windows build 26300、Word 16.0.20430.20180 x64、普通用户权限、200% DPI、Office 2010 PIA、.NET Framework 4.8。0.4.0 的性能与对象编辑测试保存在 [历史记录](TESTING-v0.4.0-rc.1.md)，不作为本次重新执行的结果。
