@@ -129,6 +129,13 @@ namespace PagePilot {
   public string Color {get;set;}="#334155";
  }
  public sealed class NavigationAppearance {
+  public string VisualStyle {get;set;}="colorful";
+  public NavigationAppearance Effective(){
+   if(VisualStyle!="acrobat")return this;
+   return new NavigationAppearance{VisualStyle="acrobat",Background="#F5F5F5",Accent="#1473E6",HighlightColor=HighlightColor,
+    SelectionBackground="#E1EFFF",SelectionForeground="#2C2C2C",RowPadding=5,Indent=18,MaxLines=MaxLines,
+    Levels=Enumerable.Range(0,9).Select(i=>new NavigationLevelStyle{Font=Levels[i].Font,Size=13,Bold=false,Color="#4B4B4B"}).ToArray()};
+  }
   public string Background {get;set;}="#F8FAFC";
   public string Preset {get;set;}="light";
   public string Accent {get;set;}="#0F766E";
@@ -143,6 +150,7 @@ namespace PagePilot {
   public bool InferTypography {get;set;}=true;
   public NavigationLevelStyle[] Levels {get;set;}=Enumerable.Range(1,9).Select(i=>new NavigationLevelStyle{Size=i==1?15:13,Bold=i==1,Color=i==1?"#1E293B":"#475569"}).ToArray();
   public void Validate(){
+   if(VisualStyle!="colorful"&&VisualStyle!="acrobat")throw new ArgumentException("请选择多彩或 Acrobat 专业风格。");
    foreach(var color in new[]{Accent,HighlightColor,SelectionBackground,SelectionForeground})if(!Regex.IsMatch(color??"",@"^#[0-9a-fA-F]{6}$"))throw new ArgumentException("外观颜色应为 #RRGGBB。");
    if(RowPadding<3||RowPadding>16||Indent<12||Indent>32||MaxLines<1||MaxLines>4||MaxLevel<1||MaxLevel>9)throw new ArgumentException("目录间距、行数或显示级数无效。");
    if(!Regex.IsMatch(Background??"",@"^#[0-9a-fA-F]{6}$")||Levels==null||Levels.Length!=9)throw new ArgumentException("导航外观需要背景颜色与九级样式。");

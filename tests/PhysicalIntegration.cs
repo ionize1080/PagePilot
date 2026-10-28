@@ -19,7 +19,8 @@ class PhysicalIntegration {
  static string Canonical(string xml){var document=System.Xml.Linq.XDocument.Parse(xml);foreach(var e in document.Descendants().Where(e=>e.Name.LocalName=="proofErr"||e.Name.LocalName=="proofState"||((e.Name.LocalName=="view"||e.Name.LocalName=="zoom")&&e.Parent.Name.LocalName=="settings")).ToList())e.Remove();return document.ToString();}
  static void Assert(bool value,string name){if(!value)throw new Exception(name);Console.WriteLine("PASS "+name);}
  static async Task Until(Func<bool> check,int seconds=180){var watch=Stopwatch.StartNew();while(!check()){if(watch.Elapsed.TotalSeconds>seconds)throw new Exception("Timeout");await Task.Delay(100);}}
- [STAThread] static void Main(){SetProcessDPIAware();Forms.Application.EnableVisualStyles();var runner=new Forms.Form{Text="PagePilot physical integration",Width=430,Height=850};runner.Shown+=async(s,e)=>{try{await Run(runner);}catch(Exception ex){Console.WriteLine("FAIL "+ex);Environment.ExitCode=1;}finally{runner.Close();}};Forms.Application.Run(runner);}
+ static bool localOnly;
+ [STAThread] static void Main(string[] args){localOnly=args.Contains("--local-only");SetProcessDPIAware();Forms.Application.EnableVisualStyles();var runner=new Forms.Form{Text="PagePilot physical integration",Width=430,Height=850};runner.Shown+=async(s,e)=>{try{await Run(runner);}catch(Exception ex){Console.WriteLine("FAIL "+ex);Environment.ExitCode=1;}finally{runner.Close();}};Forms.Application.Run(runner);}
  static async Task Run(Forms.Form runner){
   dynamic app=Activator.CreateInstance(Type.GetTypeFromProgID("Word.Application"));dynamic doc=null;
   try{
@@ -29,6 +30,7 @@ class PhysicalIntegration {
    host.GetType().GetField("Dispatcher",flags).SetValue(host,new Forms.Control());
    var pane=new Pane{Dock=Forms.DockStyle.Fill};runner.Controls.Add(pane);Call(pane,"Bind",host,(object)doc,1);
    string before=(string)doc.WordOpenXML;
+   if(!localOnly){
    UI<TextBox>(pane,"AiRequirement").Text="只识别一级章标题，忽略节和正文。";
    UI<Button>(pane,"Analyze").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
    Assert(UI<ProgressBar>(pane,"WorkProgress").Visibility==Visibility.Visible,"AI progress shown immediately");
@@ -37,6 +39,7 @@ class PhysicalIntegration {
    var outline=(List<Heading>)Field(pane,"outline");Assert(status.StartsWith("AI 识别")&&outline.Count==2&&outline[0].Paragraph==1&&outline[1].Paragraph==5,"real model inline navigation exact indices");
    File.WriteAllText(".temp/before.xml",before);File.WriteAllText(".temp/after.xml",(string)doc.WordOpenXML);Assert(Canonical(before)==Canonical((string)doc.WordOpenXML),"navigation preserves document XML");
    UI<Button>(pane,"Analyze").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));UI<Button>(pane,"Analyze").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));await Until(()=>Field(pane,"navigationCancel")==null);Assert(UI<TextBlock>(pane,"Status").Text.Contains("取消"),"navigation cancellation");
+   }
    pane.Dispose();pane=new Pane{Dock=Forms.DockStyle.Fill};runner.Controls.Add(pane);Call(pane,"Bind",host,(object)doc,0);
    UI<TextBox>(pane,"Pattern").Text="ABC";UI<TextBox>(pane,"Replacement").Text="XYZ";
    await Until(()=>UI<TextBlock>(pane,"Status").Text.StartsWith("找到"));
@@ -62,6 +65,7 @@ class PhysicalIntegration {
    Console.WriteLine("SCROLL first="+firstBefore+" -> "+firstAfter+" slices="+(slicesAfter-slicesBefore)+" elapsed="+scroll.ElapsedMilliseconds+" maxSlice="+overlay.GetType().GetProperty("MaxSliceMilliseconds",flags).GetValue(overlay));
    Assert(firstAfter>firstBefore&&firstAfter<int.MaxValue&&slicesAfter>slicesBefore,"Scroll automatically refreshes visible highlight positions");
    Assert(((Forms.Form)overlay).Opacity==1,"Highlight has no translucent text wash");
+   Console.WriteLine("RENDER frames="+overlay.GetType().GetProperty("PresentedFrames",flags).GetValue(overlay)+" translated="+overlay.GetType().GetProperty("TranslationFrames",flags).GetValue(overlay)+" pixels="+overlay.GetType().GetProperty("CapturedPixels",flags).GetValue(overlay)+" maxFrame="+overlay.GetType().GetProperty("MaxFrameMilliseconds",flags).GetValue(overlay));
    var beforeZoom=((List<System.Drawing.Rectangle>)Field(overlay,"marks")).Select(r=>r.Width).DefaultIfEmpty().Max();
    app.ActiveWindow.View.Zoom.Percentage=125;await Task.Delay(700);
    var afterZoom=((List<System.Drawing.Rectangle>)Field(overlay,"marks")).Select(r=>r.Width).DefaultIfEmpty().Max();

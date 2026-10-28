@@ -5,7 +5,7 @@ using System.Text.RegularExpressions;
 namespace PagePilot {
  public sealed class HeadingRule { public string Name {get;set;} public string Pattern {get;set;} public int Level {get;set;} internal Regex Cached;internal string CachedPattern; }
  public sealed class Heading { public int Paragraph {get;set;} public int Start {get;set;} public int End {get;set;} public int Level {get;set;} public string Text {get;set;} public override string ToString()=>new string(' ',(Level-1)*2)+Text; }
- public sealed class Hit { public int Start {get;set;} public int Length {get;set;} public string Before {get;set;} public string After {get;set;} public override string ToString()=> $"{Start}: {Before.Replace("\r","↵")} → {After.Replace("\r","↵")}"; }
+ public sealed class Hit { public int Start {get;set;} public int Length {get;set;} public string Before {get;set;} public string After {get;set;} internal int SourceStart,SourceLength;internal bool PositionResolved;public override string ToString()=> $"{Before.Replace("\r","↵")} → {After.Replace("\r","↵")}"; }
  public static class Engine {
   public static readonly HeadingRule[] Defaults = {
    new HeadingRule{Name="中文章",Pattern=@"^第[一二三四五六七八九十百千万零〇两0-9]+[编篇章]\s*\S.*$",Level=1},
@@ -31,7 +31,7 @@ namespace PagePilot {
     if(m.Value.Contains('\a') || m.Value.Contains('\n') || m.Value.Contains('\f'))throw new InvalidOperationException("不支持跨段落或单元格边界替换，请按段落匹配。");
     var after=m.Result(replacement);
     if(after.IndexOfAny(new[]{'\a','\r','\n','\f'})>=0)throw new InvalidOperationException("替换文本不能含段落或单元格控制符。");
-    results.Add(new Hit{Start=offset+m.Index,Length=m.Length,Before=m.Value,After=after});
+    results.Add(new Hit{Start=offset+m.Index,Length=m.Length,SourceStart=m.Index,SourceLength=m.Length,Before=m.Value,After=after});
    }
    return results;
   }

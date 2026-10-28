@@ -14,10 +14,11 @@ namespace PagePilot {
   private FrameworkElement view;private TextBox pattern,replacement;private CheckBox ignore,selection;
   private ListBox hits;private TreeView headings;private bool rebuilding;private TextBlock status;
   private List<Hit> found=new List<Hit>();private string snapshot;private int snapshotStart,snapshotEnd,snapshotDocumentEnd;private bool snapshotSelection;
-  private int? lockedStart,lockedEnd;private string cachedText,cachedQuery;private int[] cachedPositions,cachedEnds;private bool cachedIgnore,aiOutline;private int outlineVersion;
-  private bool scanning;private int appearanceVersion=-1;private System.Threading.CancellationTokenSource scanCancel;
+  private SearchSnapshot searchSnapshot;private string mapDocumentText;private int mapStart,mapEnd,mapDocumentEnd;private bool updatingReplacement;
+  private int? lockedStart,lockedEnd;private string cachedText,cachedQuery;private bool cachedIgnore,aiOutline;private int outlineVersion;
+  private NavigationAppearance appliedAppearance;private bool scanning;private int appearanceVersion=-1;private System.Threading.CancellationTokenSource scanCancel;
   private int idleTicks;private int outlineEnd;private List<Heading> outline=new List<Heading>();private string outlineSnapshot,ruleSnapshot;
-  private readonly System.Windows.Forms.Timer searchTimer=new System.Windows.Forms.Timer{Interval=350};private int searchVersion;private System.Threading.CancellationTokenSource searchCancel;private SearchHighlight highlight;private readonly System.Windows.Forms.Timer highlightTimer=new System.Windows.Forms.Timer{Interval=180};
+  private readonly System.Windows.Forms.Timer searchTimer=new System.Windows.Forms.Timer{Interval=140};private int searchVersion;private System.Threading.CancellationTokenSource searchCancel;private SearchHighlight highlight;private readonly System.Windows.Forms.Timer highlightTimer=new System.Windows.Forms.Timer{Interval=180};
   private readonly System.Windows.Forms.Timer timer=new System.Windows.Forms.Timer{Interval=1800};
   public Pane(){AutoScaleMode=System.Windows.Forms.AutoScaleMode.None;}
   private T Find<T>(string name) where T:class=>view.FindName(name) as T;
@@ -33,10 +34,10 @@ namespace PagePilot {
     pattern=Find<TextBox>("Pattern");replacement=Find<TextBox>("Replacement");ignore=Find<CheckBox>("IgnoreCase");selection=Find<CheckBox>("SelectionOnly");hits=Find<ListBox>("Matches");
     On("Preview",()=>{lockedStart=null;lockedEnd=null;FindMatches();});On("Replace",Replace);
     highlight=new SearchHighlight{MarkColor=System.Drawing.ColorTranslator.FromHtml(host.NavigationStyle.HighlightColor)};highlightTimer.Tick+=(s,e)=>{try{if(Visible&&WordWindows.IsWindowVisible(Handle)&&snapshot!=null&&host.App.Documents.Count>0&&object.Equals(host.App.ActiveDocument,doc)&&WordWindows.Handle(host.App.ActiveWindow).ToInt64()==windowHandle)highlight.Update(doc,host.App.ActiveWindow,new IntPtr(windowHandle),found);else highlight.Hide();}catch{highlight.Hide();}};highlightTimer.Start();
-    searchTimer.Tick+=(s,e)=>{searchTimer.Stop();FindMatches();};
+    searchTimer.Tick+=(s,e)=>{searchTimer.Stop();if(updatingReplacement&&snapshot!=null)UpdateReplacementAsync();else FindMatches();};
     pattern.TextChanged+=(s,e)=>ScheduleSearch();replacement.TextChanged+=(s,e)=>UpdateReplacement();
     ignore.Click+=(s,e)=>ScheduleSearch();selection.Click+=(s,e)=>{lockedStart=null;lockedEnd=null;ScheduleSearch();};
-    hits.SelectionChanged+=(s,e)=>Guard(()=>{var item=hits.SelectedItem as Hit;if(item!=null){EnsureSnapshot();doc.Activate();doc.Range(item.Start,item.Start+item.Length).Select();}});
+    hits.SelectionChanged+=(s,e)=>Guard(()=>{var item=hits.SelectedItem as Hit;if(item!=null){EnsureSnapshot();ResolveHit(item);if((string)doc.Range(item.Start,item.Start+item.Length).Text!=item.Before)throw new Exception("匹配位置已变化，请重新查找。");doc.Activate();doc.Range(item.Start,item.Start+item.Length).Select();}});
    }else{
     headings=Find<TreeView>("Headings");On("Refresh",RefreshOutline);On("StopScan",()=>{scanCancel?.Cancel();outlineVersion++;status.Text="分析已取消";});On("Analyze",AIOutline);On("Apply",ApplyOutline);
     headings.SelectedItemChanged+=(s,e)=>{if(!rebuilding)Guard(()=>{var item=(headings.SelectedItem as TreeViewItem)?.Tag as Heading;if(item!=null)Navigate(item);});};
@@ -46,22 +47,22 @@ namespace PagePilot {
      if(page==1&&!scanning&&navigationCancel==null&&outlineSnapshot!=null&&((int)doc.Content.End!=outlineEnd||Connect.ReadRulesText()!=ruleSnapshot)){status.Text="目录待更新 · 点击分析刷新（含样式变化）";}
      if(page==0&&snapshot!=null&&((int)doc.Content.End!=snapshotDocumentEnd||(inspect&&(string)doc.Content.Text!=snapshot)))ScheduleSearch();}catch{}}};timer.Start();
   }
-  private void ApplyTheme(){if(appliedTheme==host.Theme)return;appliedTheme=host.Theme;
+  private void ApplyTheme(){int iconTheme=host.NavigationStyle.VisualStyle=="acrobat"?2:host.Theme;if(appliedTheme==iconTheme)return;appliedTheme=iconTheme;
    view.Resources["Accent"]=new System.Windows.Media.SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(host.Theme==1?"#4671D6":host.Theme==2?"#515E6F":"#238B73"));
-   using(var bitmap=RibbonIcons.Draw("ppSettings",24,host.Theme))using(var memory=new MemoryStream()){bitmap.Save(memory,System.Drawing.Imaging.ImageFormat.Png);memory.Position=0;var source=new System.Windows.Media.Imaging.BitmapImage();source.BeginInit();source.CacheOption=System.Windows.Media.Imaging.BitmapCacheOption.OnLoad;source.StreamSource=memory;source.EndInit();source.Freeze();Find<Button>("Settings").Content=new Image{Source=source,Width=18,Height=18};}
+   using(var bitmap=RibbonIcons.Draw("ppSettings",24,iconTheme))using(var memory=new MemoryStream()){bitmap.Save(memory,System.Drawing.Imaging.ImageFormat.Png);memory.Position=0;var source=new System.Windows.Media.Imaging.BitmapImage();source.BeginInit();source.CacheOption=System.Windows.Media.Imaging.BitmapCacheOption.OnLoad;source.StreamSource=memory;source.EndInit();source.Freeze();Find<Button>("Settings").Content=new Image{Source=source,Width=18,Height=18};}
   }
   private void RefreshBinding(){
    if(host.App.Documents.Count==0||WordWindows.Handle(host.App.ActiveWindow).ToInt64()!=windowHandle)return;
    dynamic current=host.App.ActiveDocument;bool same=false;
    try{same=object.Equals(doc,current)&&(string)doc.FullName==(string)current.FullName;}catch{}
    if(same)return;
-   navigationCancel?.Cancel();scanCancel?.Cancel();outlineVersion++;aiOutline=false;lockedStart=null;lockedEnd=null;searchVersion++;doc=current;snapshot=null;outlineSnapshot=null;found.Clear();outline.Clear();
+   navigationCancel?.Cancel();scanCancel?.Cancel();searchCancel?.Cancel();outlineVersion++;aiOutline=false;lockedStart=null;lockedEnd=null;searchVersion++;doc=current;snapshot=null;searchSnapshot=null;mapDocumentText=null;outlineSnapshot=null;found.Clear();outline.Clear();
    if(hits!=null)hits.ItemsSource=null;if(headings!=null)headings.Items.Clear();
    status.Text="已切换文档 · 请重新预览";
   }
   public void SelectPage(int index){Guard(()=>{if(page==1&&outlineSnapshot==null&&!scanning)BeginInvoke(new Action(RefreshOutline));});}
   private void Guard(Action action){try{RefreshBinding();action();}catch(Exception e){PagePilot.Configuration.RuntimeLog.Write("host","pane.failed",e.GetType().Name+" stack="+e.StackTrace,"error");status.Text=e.Message;System.Windows.Forms.MessageBox.Show(e.Message,"PagePilot");}}
-  private void ScheduleSearch(){searchCancel?.Cancel();highlight?.Hide();searchVersion++;snapshot=null;searchTimer.Stop();searchTimer.Start();}
+  private void ScheduleSearch(){updatingReplacement=false;searchCancel?.Cancel();highlight?.Hide();searchVersion++;snapshot=null;searchTimer.Stop();searchTimer.Start();}
   private async void FindMatches(){
    searchCancel?.Cancel();var cancel=new System.Threading.CancellationTokenSource();searchCancel=cancel;int version=++searchVersion;var watch=System.Diagnostics.Stopwatch.StartNew();PagePilot.Configuration.RuntimeLog.Write("host","regex.search.begin","revision="+version,"debug");
    try{
@@ -70,47 +71,56 @@ namespace PagePilot {
     if(selection.IsChecked==true){if(!lockedStart.HasValue){dynamic chosen=host.App.Selection.Range;if((int)chosen.StoryType!=1)throw new Exception("正则侧栏仅支持正文；其他区域请用对象工具。");lockedStart=(int)chosen.Start;lockedEnd=(int)chosen.End;}if(lockedEnd>(int)doc.Content.End)throw new Exception("原选区已失效，请点击查找预览重新选择。");range=doc.Range(lockedStart.Value,lockedEnd.Value);}
     if(selection.IsChecked==true&&!object.Equals(host.App.ActiveDocument,doc))throw new Exception("请激活此窗格对应的文档后再查找。");
     string full=(string)doc.Content.Text,text=(string)range.Text,query=pattern.Text,replace=replacement.Text;
-    int start=(int)range.Start,end=(int)range.End;bool selected=selection.IsChecked==true,ic=ignore.IsChecked==true;
-    // Simple stories have a direct UTF-16 mapping. Complex stories require explicit Word positions.
-    int[] positions=null,ends=null;
-    if((int)range.Fields.Count>0||(int)range.ContentControls.Count>0||end-start!=text.Length){
-     var map=new List<int>();var finish=new List<int>();var actual=new System.Text.StringBuilder();
-     var fieldStarts=new Dictionary<int,int>();var fieldEnds=new Dictionary<int,int>();
-     foreach(dynamic field in doc.Fields){fieldStarts[(int)field.Code.Start-1]=(int)field.Result.Start;fieldEnds[(int)field.Result.End+1]=(int)field.Result.End;}
-     foreach(dynamic paragraph in range.Paragraphs){
-      dynamic pr=paragraph.Range;int ps=Math.Max(start,(int)pr.Start),pe=Math.Min(end,(int)pr.End);if(pe<=ps)continue;
-      dynamic part=doc.Range(ps,pe);string pt=(string)part.Text??"";
-      if((int)part.Fields.Count==0&&(int)part.ContentControls.Count==0&&pe-ps==pt.Length){for(int k=0;k<pt.Length;k++){map.Add(ps+k);finish.Add(ps+k+1);}actual.Append(pt);}
-      else foreach(dynamic c in part.Characters){string t=(string)c.Text??"";int cs=(int)c.Start,ce=(int)c.End;while(fieldStarts.ContainsKey(cs))cs=fieldStarts[cs];while(fieldEnds.ContainsKey(ce))ce=fieldEnds[ce];
-       for(int k=0;k<t.Length;k++){map.Add(cs+Math.Min(k,ce-cs-1));finish.Add(Math.Min(cs+k+1,ce));actual.Append(t[k]);}}
-     }
-     map.Add(end);
-     if(actual.ToString()!=text){
-      map.Clear();finish.Clear();actual.Clear();
-      foreach(dynamic c in range.Characters){string t=(string)c.Text??"";int cs=(int)c.Start,ce=(int)c.End;while(fieldStarts.ContainsKey(cs))cs=fieldStarts[cs];while(fieldEnds.ContainsKey(ce))ce=fieldEnds[ce];for(int k=0;k<t.Length;k++){map.Add(cs+Math.Min(k,ce-cs-1));finish.Add(Math.Min(cs+k+1,ce));actual.Append(t[k]);}}
-      map.Add(end);if(actual.ToString()!=text)throw new Exception("此范围包含无法安全映射的域，请缩小查找范围。");
-     }
-     positions=map.ToArray();ends=finish.ToArray();
+    Engine.Compile(query,ignore.IsChecked==true);
+    int snapshotDocumentEndBefore=(int)doc.Content.End;int start=(int)range.Start,end=(int)range.End;bool selected=selection.IsChecked==true,ic=ignore.IsChecked==true;
+    status.Text="正在读取查找范围…";await System.Threading.Tasks.Task.Delay(1,cancel.Token);
+    var mapping=searchSnapshot;
+    if(mapping==null||mapDocumentText!=full||mapStart!=start||mapEnd!=end||mapDocumentEnd!=(int)doc.Content.End){
+     mapping=await SearchSnapshot.Read((object)doc,start,end,(i,n)=>{if(version==searchVersion&&!IsDisposed)status.Text=$"读取查找范围 · {i:N0} / {n:N0}";},cancel.Token);
+     cancel.Token.ThrowIfCancellationRequested();
+     if(version!=searchVersion||IsDisposed)return;
+     if((string)doc.Content.Text!=full||(int)doc.Content.End!=snapshotDocumentEndBefore){status.Text="文档已变化，请重新查找";return;}
+     searchSnapshot=mapping;mapDocumentText=full;mapStart=start;mapEnd=end;mapDocumentEnd=(int)doc.Content.End;
     }
+    text=mapping.Text;
     status.Text="正在查找…";
-    var result=await System.Threading.Tasks.Task.Run(()=>Engine.Find(text,0,query,replace,ic,cancel.Token));
+    var result=await System.Threading.Tasks.Task.Run(()=>Engine.Find(text,0,query,replace,ic,cancel.Token),cancel.Token);
+    if(result.Count<=256)await mapping.ResolveAll(result,cancel.Token);
     if(version!=searchVersion||IsDisposed)return;
-    foreach(var hit in result){int a=hit.Start,b=a+hit.Length;hit.Start=positions==null?start+a:positions[a];hit.Length=(positions==null?start+b:(a==b?positions[a]:ends[b-1]))-hit.Start;}
-    cachedText=text;cachedQuery=query;cachedIgnore=ic;cachedPositions=positions;cachedEnds=ends;
+    cachedText=text;cachedQuery=query;cachedIgnore=ic;highlight.SetMapping(mapping);
     snapshot=full;snapshotDocumentEnd=(int)doc.Content.End;snapshotStart=start;snapshotEnd=end;snapshotSelection=selected;found=result;
     hits.ItemsSource=null;hits.ItemsSource=found;status.Text=$"找到 {found.Count:N0} 项 · 单击跳转";PagePilot.Configuration.RuntimeLog.Write("host","regex.search.completed","revision="+version+" matches="+found.Count+" ms="+watch.ElapsedMilliseconds,"debug");
    }catch(OperationCanceledException){PagePilot.Configuration.RuntimeLog.Write("host","regex.search.cancelled","revision="+version,"debug");}catch(Exception e){PagePilot.Configuration.RuntimeLog.Write("host","regex.search.failed",e.GetType().Name+" stack="+e.StackTrace,"error");if(version==searchVersion){snapshot=null;hits.ItemsSource=null;status.Text=e.Message;}}finally{if(searchCancel==cancel)searchCancel=null;cancel.Dispose();}
   }
   private void UpdateReplacement(){
    if(snapshot==null||cachedText==null){ScheduleSearch();return;}
-   try{var result=Engine.Find(cachedText,0,cachedQuery,replacement.Text,cachedIgnore);
-    foreach(var hit in result){int a=hit.Start,b=a+hit.Length;hit.Start=cachedPositions==null?snapshotStart+a:cachedPositions[a];hit.Length=(cachedPositions==null?snapshotStart+b:(a==b?cachedPositions[a]:cachedEnds[b-1]))-hit.Start;}
-    found=result;hits.ItemsSource=found;status.Text=$"找到 {found.Count:N0} 项 · 原查找范围保持不变";
-   }catch(Exception e){snapshot=null;hits.ItemsSource=null;status.Text=e.Message;}
+   updatingReplacement=true;searchCancel?.Cancel();searchVersion++;searchTimer.Stop();searchTimer.Start();
   }
+  private async void UpdateReplacementAsync(){
+   updatingReplacement=false;searchCancel?.Cancel();var cancel=new System.Threading.CancellationTokenSource();searchCancel=cancel;int version=++searchVersion;
+   string text=cachedText,query=cachedQuery,replace=replacement.Text;bool ic=cachedIgnore;var mapping=searchSnapshot;
+   try{
+    var result=await System.Threading.Tasks.Task.Run(()=>Engine.Find(text,0,query,replace,ic,cancel.Token),cancel.Token);
+    if(result.Count<=256)await mapping.ResolveAll(result,cancel.Token);
+    if(IsDisposed||version!=searchVersion)return;
+    found=result;hits.ItemsSource=found;status.Text=$"找到 {found.Count:N0} 项 · 原查找范围保持不变";
+   }catch(OperationCanceledException){}catch(Exception e){if(!IsDisposed&&version==searchVersion){snapshot=null;hits.ItemsSource=null;status.Text=e.Message;}}
+   finally{if(searchCancel==cancel)searchCancel=null;cancel.Dispose();}
+  }
+  internal void ResolveHit(Hit hit){searchSnapshot?.Resolve(hit);}
   private void EnsureSnapshot(){if(snapshot==null||(string)doc.Content.Text!=snapshot)throw new Exception("文档内容已变化，请重新查找预览。");}
-  private void Replace(){
-   EnsureSnapshot();if(found.Count==0)return;if(snapshotSelection!=(selection.IsChecked==true))throw new Exception("查找范围已变化，请重新预览。");
+  private async void Replace(){
+   try{
+    if(updatingReplacement||searchCancel!=null)throw new Exception("请等待查找预览完成后再替换。");
+    EnsureSnapshot();var pending=found;int revision=searchVersion;var cancel=new System.Threading.CancellationTokenSource();searchCancel=cancel;
+    try{status.Text="正在校验替换位置…";await searchSnapshot.ResolveAll(pending,cancel.Token);}
+    finally{if(searchCancel==cancel)searchCancel=null;cancel.Dispose();}
+    if(revision!=searchVersion||IsDisposed)return;
+    ReplaceResolved();
+   }catch(OperationCanceledException){if(!IsDisposed)status.Text="替换准备已取消";}catch(Exception e){if(!IsDisposed){status.Text=e.Message;System.Windows.Forms.MessageBox.Show(e.Message,"PagePilot");}}
+  }
+  private void ReplaceResolved(){
+   if(updatingReplacement||searchCancel!=null)throw new Exception("请等待查找预览完成后再替换。");EnsureSnapshot();if(found.Count==0)return;if(snapshotSelection!=(selection.IsChecked==true))throw new Exception("查找范围已变化，请重新预览。");
    // Validate every target before the first write. Never leave partial replacements.
    foreach(var item in found)if((string)doc.Range(item.Start,item.Start+item.Length).Text!=item.Before)throw new Exception("匹配位置已变化，请重新查找。");
    EnsureSnapshot();NativeTools.Backup(doc);int count=0;bool recording=false;
@@ -137,12 +147,15 @@ namespace PagePilot {
     string rulesText=Connect.ReadRulesText();var rules=ParseRules(rulesText);var rows=new List<ParagraphInfo>();
     string before=(string)doc.Content.Text;int end=(int)doc.Content.End,count=(int)doc.Paragraphs.Count;
     var total=System.Diagnostics.Stopwatch.StartNew();
-    rows=await NavigationReader.Read((object)doc,(i,n)=>ReportWork($"读取结构 · {i:N0} / {n:N0} 段",i,n),cancel.Token);
-    ReportWork("正在归纳标题层级");
-    var result=await System.Threading.Tasks.Task.Run(()=>NavigationEngine.Analyze(rows,rules,cancel.Token,host.NavigationStyle),cancel.Token);
+    var result=await NavigationReader.TryReadHeadings((object)doc,rules,host.NavigationStyle,(i,n)=>{if(!IsDisposed&&version==outlineVersion&&!cancel.IsCancellationRequested)ReportWork($"对齐目录位置 · {i:N0} / {n:N0}",i,n);},cancel.Token);
+    if(result==null){
+     rows=await NavigationReader.Read((object)doc,(i,n)=>{if(!IsDisposed&&version==outlineVersion&&!cancel.IsCancellationRequested)ReportWork($"读取结构 · {i:N0} / {n:N0} 段",i,n);},cancel.Token);
+     ReportWork("正在归纳标题层级");
+     result=await System.Threading.Tasks.Task.Run(()=>NavigationEngine.Analyze(rows,rules,cancel.Token,host.NavigationStyle),cancel.Token);
+    }
     if(version!=outlineVersion||IsDisposed||!object.Equals(document,doc))return;
     if((string)doc.Content.Text!=before||(int)doc.Content.End!=end){status.Text="文档已变化，请重新分析";return;}
-    NavigationReader.Resolve((object)doc,result);aiOutline=false;outline=result;outlineSnapshot=before;outlineEnd=end;ruleSnapshot=rulesText;RenderOutline();ApplyNavigationAppearance();
+    await NavigationReader.ResolveAsync((object)doc,result,cancel.Token);if(version!=outlineVersion||IsDisposed)return;aiOutline=false;outline=result;outlineSnapshot=before;outlineEnd=end;ruleSnapshot=rulesText;RenderOutline();ApplyNavigationAppearance();
     status.Text=$"{outline.Count:N0} 个标题 · 单击定位 · 展开加载子目录";
     Connect.Log("navigation.scan.completed headings="+outline.Count+" paragraphs="+count+" ms="+total.ElapsedMilliseconds);
    }catch(OperationCanceledException){if(!IsDisposed&&version==outlineVersion)status.Text="分析已取消";}
@@ -160,8 +173,8 @@ namespace PagePilot {
   }
   private TreeViewItem CreateNode(OutlineNode model){
    var item=model.Heading;var label=new TextBlock{Text=item.Text.Length>120?item.Text.Substring(0,120)+"…":item.Text,TextWrapping=TextWrapping.Wrap};
-   var node=new TreeViewItem{Header=label,Tag=item,Padding=new Thickness(4,host.NavigationStyle.RowPadding,8,host.NavigationStyle.RowPadding),HorizontalContentAlignment=HorizontalAlignment.Stretch,ToolTip="第 "+item.Paragraph+" 段 · "+item.Level+" 级\n"+item.Text};
-   label.SetBinding(TextBlock.MaxWidthProperty,new System.Windows.Data.Binding("ActualWidth"){Source=headings,Converter=new NavigationWidth(),ConverterParameter=Tuple.Create(item.Level,host.NavigationStyle.Indent)});
+   var node=new TreeViewItem{Header=label,Tag=item,Padding=new Thickness(4,appliedAppearance.RowPadding,8,appliedAppearance.RowPadding),HorizontalContentAlignment=HorizontalAlignment.Stretch,ToolTip=(item.Paragraph>0?"第 "+item.Paragraph+" 段 · ":"")+item.Level+" 级\n"+item.Text};
+   label.SetBinding(TextBlock.MaxWidthProperty,new System.Windows.Data.Binding("ActualWidth"){Source=headings,Converter=new NavigationWidth(),ConverterParameter=Tuple.Create(item.Level,appliedAppearance.Indent)});
    StyleLabel(label,item.Level);node.Selected+=(s,e)=>{if(e.OriginalSource==node)StyleLabel(label,item.Level,true);};node.Unselected+=(s,e)=>{if(e.OriginalSource==node)StyleLabel(label,item.Level);};label.MouseLeftButtonDown+=(s,e)=>{if(node.IsSelected)Guard(()=>Navigate(item));};
    if(model.Children.Count>0){node.Items.Add(new TreeViewItem{Header="加载子目录…"});bool loaded=false;
     node.Expanded+=(s,e)=>{if(e.OriginalSource!=node||loaded)return;loaded=true;node.Items.Clear();foreach(var child in model.Children)node.Items.Add(CreateNode(child));};}
@@ -171,19 +184,23 @@ namespace PagePilot {
    public object Convert(object value,Type target,object parameter,System.Globalization.CultureInfo culture)=>Math.Max(40,(double)value-64-(((Tuple<int,int>)parameter).Item1-1)*((Tuple<int,int>)parameter).Item2);
    public object ConvertBack(object value,Type target,object parameter,System.Globalization.CultureInfo culture)=>throw new NotSupportedException();
   }
-  private void StyleLabel(TextBlock label,int level,bool selected=false){var style=host.NavigationStyle.Levels[Math.Max(0,Math.Min(8,level-1))];
-   label.LineHeight=style.Size*1.5;label.MaxHeight=style.Size*1.5*host.NavigationStyle.MaxLines;label.TextTrimming=TextTrimming.CharacterEllipsis;
+  private void StyleLabel(TextBlock label,int level,bool selected=false){var style=appliedAppearance.Levels[Math.Max(0,Math.Min(8,level-1))];
+   label.LineHeight=style.Size*1.5;label.MaxHeight=style.Size*1.5*appliedAppearance.MaxLines;label.TextTrimming=TextTrimming.CharacterEllipsis;
    label.FontFamily=new System.Windows.Media.FontFamily(style.Font);label.FontSize=style.Size;label.FontWeight=style.Bold?FontWeights.Bold:FontWeights.Normal;
-   label.Foreground=new System.Windows.Media.SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(selected?host.NavigationStyle.SelectionForeground:style.Color));}
+   label.Foreground=new System.Windows.Media.SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(selected?appliedAppearance.SelectionForeground:style.Color));}
   private void ApplyNavigationAppearance(){
    if(appearanceVersion==host.NavigationStyleVersion)return;appearanceVersion=host.NavigationStyleVersion;
-   var a=host.NavigationStyle;var background=(System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(a.Background);
+   var a=host.NavigationStyle.Effective();appliedAppearance=a;bool professional=a.VisualStyle=="acrobat";var background=(System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(a.Background);
    bool dark=background.R*0.2126+background.G*0.7152+background.B*0.0722<120;
    Action<string,string> brush=(key,color)=>view.Resources[key]=new System.Windows.Media.SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(color));
    brush("Canvas",a.Background);brush("Accent",a.Accent);brush("Selected",a.SelectionBackground);brush("SelectedInk",a.SelectionForeground);
    var accent=(System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(a.Accent);brush("AccentInk",accent.R*0.2126+accent.G*0.7152+accent.B*0.0722>150?"#102A26":"#FFFFFF");
    if(highlight!=null){highlight.MarkColor=System.Drawing.ColorTranslator.FromHtml(a.HighlightColor);highlight.Invalidate();}
    brush("Ink",dark?"#EDF2F7":"#1E293B");brush("Muted",dark?"#BAC8D9":"#526279");brush("Surface",dark?"#243143":"#FFFFFF");brush("Line",dark?"#46566D":"#D6DFE9");brush("Hover",dark?"#2D3E50":"#EDF2F7");
+   if(professional){brush("Ink","#2C2C2C");brush("Muted","#6E6E6E");brush("Surface","#FAFAFA");brush("Hover","#EAEAEA");brush("Line","#F5F5F5");}
+   view.Resources["FrameLine"]=new Thickness(professional?0:1);view.Resources["FocusLine"]=new Thickness(professional?0:2);
+   view.Resources["RowRadius"]=new CornerRadius(professional?0:8);
+   view.Resources["FooterLine"]=professional?new Thickness(0):new Thickness(0,1,0,0);
    view.Resources["TreeIndent"]=new Thickness(a.Indent,0,0,0);
    if(headings==null)return;
    Action<ItemsControl> apply=null;apply=parent=>{foreach(TreeViewItem n in parent.Items){if(n.Tag is Heading h&&n.Header is TextBlock t){StyleLabel(t,h.Level,n.IsSelected);n.Padding=new Thickness(4,a.RowPadding,8,a.RowPadding);t.SetBinding(TextBlock.MaxWidthProperty,new System.Windows.Data.Binding("ActualWidth"){Source=headings,Converter=new NavigationWidth(),ConverterParameter=Tuple.Create(h.Level,a.Indent)});}apply(n);}};apply(headings);
@@ -221,13 +238,13 @@ namespace PagePilot {
     if(!object.Equals(document,doc)||(string)doc.Content.Text!=before)throw new Exception("文档已变化，请重新识别。");
     if(Find<CheckBox>("NavigationAutomatic").IsChecked!=true&&!host.Approval("更新导航目录（不修改文档）",result.Count+" 个标题")){status.Text="已取消更新目录";return;}
     if((string)doc.Content.Text!=before)throw new Exception("文档已变化，请重新识别。");
-    NavigationReader.Resolve((object)doc,result);SetOutline(result);
+    await NavigationReader.ResolveAsync((object)doc,result,cancel.Token);cancel.Token.ThrowIfCancellationRequested();SetOutline(result);
    }catch(OperationCanceledException){if(!IsDisposed)status.Text="识别已取消";}
    catch(Exception e){Connect.Log("Navigation AI: "+e.GetType().Name);if(!IsDisposed)status.Text="识别失败："+(e is System.Net.Http.HttpRequestException?"模型服务连接失败，请检查网络与配置。":e.Message);}
    finally{navigationCancel=null;cancel.Dispose();if(!IsDisposed){FinishWork();button.Content="AI 识别";Find<Button>("Apply").IsEnabled=true;Find<Button>("Refresh").IsEnabled=true;}}
   }
   internal void SetOutline(List<Heading> items){scanCancel?.Cancel();outlineVersion++;aiOutline=true;outline=items;outlineSnapshot=(string)doc.Content.Text;outlineEnd=(int)doc.Content.End;ruleSnapshot=Connect.ReadRulesText();RenderOutline();status.Text=$"AI 识别 {outline.Count} 个标题 · 文档未修改";}
-  private void ApplyOutline(){if((string)doc.Content.Text!=outlineSnapshot)throw new Exception("文档已变化，请刷新结构。");NativeTools.Backup(doc);foreach(var item in outline)doc.Paragraphs[item.Paragraph].OutlineLevel=item.Level;status.Text="已应用大纲级别 · 可使用 Word 原生导航";}
+  private void ApplyOutline(){if((string)doc.Content.Text!=outlineSnapshot)throw new Exception("文档已变化，请刷新结构。");NativeTools.Backup(doc);foreach(var item in outline)doc.Range(item.Start,item.End).ParagraphFormat.OutlineLevel=item.Level;status.Text="已应用大纲级别 · 可使用 Word 原生导航";}
   protected override void Dispose(bool disposing){if(disposing){outlineVersion++;scanCancel?.Cancel();navigationCancel?.Cancel();searchCancel?.Cancel();workTimer.Dispose();highlightTimer.Dispose();highlight?.Dispose();searchVersion++;timer.Dispose();searchTimer.Dispose();}base.Dispose(disposing);}
  }
 }

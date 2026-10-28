@@ -7,7 +7,7 @@ import zipfile
 parser=argparse.ArgumentParser()
 parser.add_argument('--output',required=True)
 parser.add_argument('--chatbox-source',required=True)
-parser.add_argument('--version',default='0.4.6')
+parser.add_argument('--version',default='0.4.7')
 args=parser.parse_args()
 repo=Path(__file__).resolve().parents[1]
 out=Path(args.output).resolve()

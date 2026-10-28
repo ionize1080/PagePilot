@@ -17,7 +17,10 @@ class NavigationLiveCorpus {
   try{foreach(var m in manifest){
    string file=(string)m["file"];if(args.Contains("--resume")&&File.Exists(args[2])&&json.Deserialize<List<Dictionary<string,object>>>(File.ReadAllText(args[2])).Any(x=>(string)x["file"]==file))continue;if(ai&&!new[]{"bf958006598806b3.docx","7c0f84497eabbe58.docx","8b7d81fefcab770b.docx"}.Contains(file))continue;
    var watch=Stopwatch.StartNew();doc=app.Documents.Open(Path.GetFullPath(Path.Combine(args[1],file)),ConfirmConversions:false,ReadOnly:true,AddToRecentFiles:false,Visible:false,NoEncodingDialog:true);string before=(string)doc.Content.Text;bool saved=doc.Saved;
-   var rows=await NavigationReader.Read((object)doc,null,CancellationToken.None);var headings=NavigationEngine.Analyze(rows,Engine.Defaults);long local=watch.ElapsedMilliseconds;
+   List<ParagraphInfo> rows=null;List<Heading> headings=null;bool indexed=false;
+   if(args.Contains("--indexed")&&!ai){headings=await NavigationReader.TryReadHeadings((object)doc,Engine.Defaults,new NavigationAppearance(),null,CancellationToken.None);indexed=headings!=null;}
+   if(headings==null){rows=await NavigationReader.Read((object)doc,null,CancellationToken.None);headings=NavigationEngine.Analyze(rows,Engine.Defaults);}
+   long local=watch.ElapsedMilliseconds;int paragraphCount=(int)doc.Paragraphs.Count;
    int ticks=0;List<Heading> actualAi=null;
    if(ai){
     var method=typeof(Pane).Assembly.GetType("PagePilot.NavigationAi").GetMethod("Analyze",BindingFlags.Static|BindingFlags.NonPublic);
@@ -27,10 +30,10 @@ class NavigationLiveCorpus {
     if(actualAi.Count==0||ticks==0||actualAi.Any(h=>NavigationEngine.Excluded(rows[h.Paragraph-1])))throw new Exception("Invalid live AI result "+file);
     Console.WriteLine("LIVE AI "+file+" headings="+actualAi.Count+" batches="+ticks);
    }
-   NavigationReader.Resolve((object)doc,headings);foreach(var h in headings){if(h.Start<0||h.End<h.Start||h.End>(int)doc.Content.End)throw new Exception("Invalid Word range "+file);}
+   await NavigationReader.ResolveAsync((object)doc,headings,CancellationToken.None);foreach(var h in headings){if(h.Start<0||h.End<h.Start||h.End>(int)doc.Content.End)throw new Exception("Invalid Word range "+file);if(h.Paragraph>0&&(int)doc.Paragraphs[h.Paragraph].Range.Start!=h.Start)throw new Exception("Invalid paragraph ordinal "+file+" at "+h.Paragraph);if(((string)doc.Range(h.Start,h.End).Text).IndexOfAny(new[]{'\r','\a'})>=0)throw new Exception("Heading spans paragraph/cell text "+file+" start="+h.Start+" end="+h.End);}
    bool stable=(string)doc.Content.Text==before;Console.WriteLine("WORD state textStable="+stable+" savedBefore="+saved+" savedAfter="+(bool)doc.Saved);
    if(!stable){before=(string)doc.Content.Text;rows=await NavigationReader.Read((object)doc,null,CancellationToken.None);headings=NavigationEngine.Analyze(rows,Engine.Defaults);NavigationReader.Resolve((object)doc,headings);if((string)doc.Content.Text!=before)throw new Exception("Word document did not settle "+file);}
-   output.Add(new{file,paragraphs=rows.Count,headings,ai=actualAi,localMs=local,totalMs=watch.ElapsedMilliseconds});Console.WriteLine("WORD "+file+" rows="+rows.Count+" headings="+headings.Count+" ms="+watch.ElapsedMilliseconds);
+   output.Add(new{file,paragraphs=paragraphCount,headings,ai=actualAi,indexed,localMs=local,totalMs=watch.ElapsedMilliseconds});Console.WriteLine("WORD "+file+" rows="+paragraphCount+" headings="+headings.Count+" indexed="+indexed+" ms="+watch.ElapsedMilliseconds);
    doc.Close(0);doc=null;File.WriteAllText(args[2],json.Serialize(output));
   }}finally{if(doc!=null)doc.Close(0);app.Options.UpdateLinksAtOpen=links;app.Quit();}
   Console.WriteLine("PASS "+output.Count+" live Word documents; AI="+ai);
