@@ -2,6 +2,7 @@
 const {app,BrowserWindow,ipcMain}=require('electron'),path=require('node:path');
 app.setPath('userData',path.resolve(__dirname,'../.temp/layout-profile-'+process.pid));
 const fs=require('node:fs'),report=path.resolve(__dirname,'../.temp/settings-layout-result.json'),results=[];fs.mkdirSync(path.dirname(report),{recursive:true});
+ipcMain.handle('pagepilot:workspace-preferences',(_,v)=>v||{maxFileMB:100});
 ipcMain.handle('pagepilot:settings',(_,action)=>action==='read'?{theme:0,navigationGap:36,aiMode:'window',headingRules:''}:{});
 app.whenReady().then(async()=>{
  const win=new BrowserWindow({width:620,height:530,title:'PagePilot · 布局测试',webPreferences:{preload:path.resolve(__dirname,'../chatbox/settings-preload.cjs'),sandbox:true,contextIsolation:true,nodeIntegration:false}});

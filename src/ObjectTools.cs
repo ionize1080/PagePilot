@@ -7,10 +7,11 @@ using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
 using System.Xml.Linq;
+using System.IO;
 namespace PagePilot {
  // Explicit, sparse property edits. Never exposes arbitrary COM invocation or OLE activation.
  internal static class ObjectTools {
-  sealed class Ticket {internal object Doc,Value;internal string Kind,Hash;}
+  sealed class Ticket {internal object Doc,Value;internal string Kind,Hash,ReferenceHash;}
   static readonly Dictionary<string,Ticket> tickets=new Dictionary<string,Ticket>();
   static readonly Dictionary<string,string[]> properties=new Dictionary<string,string[]> {
    {"section",new[]{"PageSetup.Orientation","PageSetup.PageWidth","PageSetup.PageHeight","PageSetup.TopMargin","PageSetup.BottomMargin","PageSetup.LeftMargin","PageSetup.RightMargin","PageSetup.HeaderDistance","PageSetup.FooterDistance","PageSetup.Gutter","PageSetup.SectionStart","PageSetup.DifferentFirstPageHeaderFooter","PageSetup.OddAndEvenPagesHeaderFooter","PageSetup.VerticalAlignment","PageSetup.TextColumns.Spacing","PageSetup.TextColumns.EvenlySpaced"}},
@@ -42,6 +43,9 @@ namespace PagePilot {
    var xml=System.Xml.Linq.XDocument.Parse((string)doc.WordOpenXML);string w="http://schemas.openxmlformats.org/wordprocessingml/2006/main",w14="http://schemas.microsoft.com/office/word/2010/wordml";
    foreach(var e in xml.Descendants().Where(x=>x.Name.NamespaceName==w&&new[]{"rsids","proofErr","proofState"}.Contains(x.Name.LocalName)).ToList())e.Remove();
    foreach(var attr in xml.Descendants().Attributes().Where(x=>(x.Name.NamespaceName==w&&x.Name.LocalName.StartsWith("rsid"))||(x.Name.NamespaceName==w14&&(x.Name.LocalName=="paraId"||x.Name.LocalName=="textId"))).ToList())attr.Remove();
+   // Word regenerates this transient OLE export identifier on each snapshot.
+   // Relationship targets and the embedded payload remain in the fingerprint.
+   foreach(var attr in xml.Descendants().Where(x=>x.Name.NamespaceName=="urn:schemas-microsoft-com:office:office"&&x.Name.LocalName=="OLEObject").Attributes("ObjectID").ToList())attr.Remove();
    using(var sha=SHA256.Create())return Convert.ToBase64String(sha.ComputeHash(Encoding.UTF8.GetBytes(xml.ToString(System.Xml.Linq.SaveOptions.DisableFormatting))));
   }
   static object Get(object obj,string path){foreach(string part in path.Split('.'))obj=obj.GetType().InvokeMember(part,BindingFlags.GetProperty,null,obj,null,CultureInfo.InvariantCulture);return obj;}
@@ -81,6 +85,24 @@ namespace PagePilot {
     default:throw new Exception("不支持的对象类型");}
    foreach(dynamic x in collection)yield return x;
   }
+  static string ReferenceHash(dynamic doc){using(var sha=SHA256.Create())return Convert.ToBase64String(sha.ComputeHash(Encoding.UTF8.GetBytes((string)doc.Content.Text+"|"+(int)doc.InlineShapes.Count+"|"+(int)doc.Shapes.Count)));}
+  internal static object ExportReference(dynamic doc,Dictionary<string,object>a){
+   string handle=S(a,"handle");
+   if(!tickets.TryGetValue(handle,out var ticket)||!new[]{"ole","inline","shape"}.Contains(ticket.Kind))throw new Exception("请先通过 pagepilot_objects 枚举 ole / inline / shape 并取得有效句柄。");
+   // OLE storage timestamps can change between WordOpenXML exports without a
+   // document edit. Bind this read-only snapshot to the live object and text/
+   // object structure; always extract fresh bytes, never cache an old payload.
+   if(!object.Equals(ticket.Doc,(object)doc)||ticket.ReferenceHash!=ReferenceHash(doc))throw new Exception("文档或对象已变化，请重新枚举对象。");
+   dynamic value=ticket.Value;dynamic range;
+   try{range=value.Range.Duplicate;}catch{range=value.Anchor.Duplicate;range.Expand(4);}
+   // Read Flat OPC only. Never invoke OLEFormat.Object/Activate/DoVerb or follow links.
+   string content=(string)range.WordOpenXML;
+   if(content.Length>180*1024*1024)throw new Exception("对象包过大，请将嵌入文件另存后添加到工作区。");
+   string folder=Path.Combine(Connect.Data,"references");Directory.CreateDirectory(folder);
+   string file=Path.Combine(folder,"object-"+Guid.NewGuid().ToString("N")+".xml");
+   File.WriteAllText(file,content,new UTF8Encoding(false));
+   return new{packagePath=file,sourceDocument=(string)doc.FullName,handle,kind=ticket.Kind,readOnly=true,note="Snapshot of the selected object range; floating anchors may contain several objects. List parts before selecting one. External links are not fetched."};
+  }
   internal static object Inspect(dynamic doc,Dictionary<string,object>a){
    string kind=S(a,"kind","range");if(kind=="schema")return Schema((int)double.Parse((string)doc.Application.Version,CultureInfo.InvariantCulture),(int)doc.CompatibilityMode);
    if(kind=="stories"){var stories=new List<object>();foreach(dynamic root in doc.StoryRanges){dynamic r=root;int chain=0;while(r!=null){stories.Add(new{area="story",type=(int)r.StoryType,chain=++chain,start=(int)r.Start,end=(int)r.End});r=r.NextStoryRange;}}return new{stories};}
@@ -96,7 +118,7 @@ namespace PagePilot {
     string id=Guid.NewGuid().ToString("N");var issuedTicket=new Ticket{Doc=doc,Value=obj,Kind=kind,Hash=hash};tickets[id]=issuedTicket;issued.Add(issuedTicket);
     rows.Add(new{index,handle=id,properties=values,unavailableProperties=unavailable});
    }
-   hash=Hash(doc);foreach(var issuedTicket in issued)issuedTicket.Hash=hash;
+   hash=Hash(doc);string referenceHash=ReferenceHash(doc);foreach(var issuedTicket in issued){issuedTicket.Hash=hash;issuedTicket.ReferenceHash=referenceHash;}
    return new{kind,objects=rows,nextStart=more?(int?)(start+rows.Count):null,requiresFreshInspectionAfterEdit=true};
   }
   static object ConvertValue(object original,object value){if(value==null)throw new Exception("属性不能为 null");if(original is string){if(!(value is string)||((string)value).Length>100000)throw new Exception("无效文本属性");return value;}if(original is bool){if(!(value is bool))throw new Exception("需要布尔值");return value;}double n=Convert.ToDouble(value,CultureInfo.InvariantCulture);if(double.IsNaN(n)||double.IsInfinity(n))throw new Exception("需要有限数值");return Convert.ChangeType(value,original.GetType(),CultureInfo.InvariantCulture);}

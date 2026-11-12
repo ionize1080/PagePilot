@@ -13,14 +13,17 @@ Object.defineProperty(process,'resourcesPath',{value:path.join(__dirname,'resour
 app.setAsDefaultProtocolClient=()=>false;
 const host=require('./host.cjs');
 let primary,displayMode='window';
+const workspaceFolder=path.join(profile,'Workspaces');
+require('./workspace-main.cjs').install({ipcMain,dialog:require('electron').dialog,primary:()=>primary,folder:workspaceFolder,root});
 function applyMode(mode){if(!primary)return;displayMode=mode;const docked=mode==='sidebar';primary.setHasShadow(!docked);primary.setSkipTaskbar(docked);primary.setMovable(!docked);primary.setMaximizable(!docked);primary.setMinimizable(!docked);primary.webContents.send('pagepilot:state',{mode});}
 ipcMain.handle('pagepilot:command',async(event,action,args={})=>{
  if(!primary||event.sender!==primary.webContents||event.senderFrame!==primary.webContents.mainFrame||!['ai_mode','ai_approval','ping'].includes(action))throw Error('Invalid request');
  const r=await host(action,args);if(action==='ai_mode')applyMode(r.mode);return r;
 });
 function inject(value){value=value||{};const servers=value.mcp?.servers||[];return {...value,autoUpdate:false,mcp:{...value.mcp,
- enabledBuiltinServers:value.mcp?.enabledBuiltinServers||[],servers:[...servers.filter(s=>s.id!=='pagepilot-word'),{
- id:'pagepilot-word',name:'PagePilot Word',enabled:true,transport:{type:'stdio',command:path.join(root,'Python','python.exe'),args:[path.join(root,'bridge','server.py')],env:{PAGEPILOT_ROOT:root,PAGEPILOT_PIPE:pipeName,PAGEPILOT_TOKEN:token,PAGEPILOT_DATA:process.env.PAGEPILOT_DATA||'',PAGEPILOT_LOGS:process.env.PAGEPILOT_LOGS||'',PAGEPILOT_LOG_LEVEL:process.env.PAGEPILOT_LOG_LEVEL||'debug',PYTHONIOENCODING:'utf-8'}}}]}};}
+ enabledBuiltinServers:value.mcp?.enabledBuiltinServers||[],servers:[...servers.filter(s=>!['pagepilot-word','pagepilot-workspace'].includes(s.id)),{
+ id:'pagepilot-workspace',name:'PagePilot Workspace',enabled:true,transport:{type:'stdio',command:path.join(root,'Python','python.exe'),args:[path.join(root,'bridge','workspace_server.py')],env:{PAGEPILOT_WORKSPACES:workspaceFolder,PYTHONIOENCODING:'utf-8'}}},{
+ id:'pagepilot-word',name:'PagePilot Word',enabled:true,transport:{type:'stdio',command:path.join(root,'Python','python.exe'),args:[path.join(root,'bridge','server.py')],env:{PAGEPILOT_WORKSPACES:workspaceFolder,PAGEPILOT_PROFILE:profile,PAGEPILOT_ROOT:root,PAGEPILOT_PIPE:pipeName,PAGEPILOT_TOKEN:token,PAGEPILOT_DATA:process.env.PAGEPILOT_DATA||'',PAGEPILOT_LOGS:process.env.PAGEPILOT_LOGS||'',PAGEPILOT_LOG_LEVEL:process.env.PAGEPILOT_LOG_LEVEL||'debug',PYTHONIOENCODING:'utf-8'}}}]}};}
 ipcMain.handle('pagepilot:context',async event=>{
  if(!primary||event.sender!==primary.webContents||event.senderFrame!==primary.webContents.mainFrame||!event.senderFrame.url.startsWith('file:'))throw Error('Invalid sender');
  const c=await host('identity');return c.document;

@@ -12,7 +12,7 @@ def call(name,**args):
  assert not result.get('error'),result
  return result
 try:
- caps=call('pagepilot_capabilities');assert len(caps['tools'])==132
+ caps=call('pagepilot_capabilities');assert len(caps['tools'])==133
  context=call('pagepilot_context',start=1,count=1)
  d=context['document'];assert '标题' in d['paragraphs'][0]['text'], 'Only synthetic StartupRegression fixture'
  document=d['path']

@@ -7,7 +7,7 @@ import zipfile
 parser=argparse.ArgumentParser()
 parser.add_argument('--output',required=True)
 parser.add_argument('--chatbox-source',required=True)
-parser.add_argument('--version',default='0.4.7')
+parser.add_argument('--version',default='0.4.8')
 args=parser.parse_args()
 repo=Path(__file__).resolve().parents[1]
 out=Path(args.output).resolve()
@@ -38,8 +38,8 @@ source=out/f'PagePilot-{version}-source.zip'
 with zipfile.ZipFile(source,'w',zipfile.ZIP_DEFLATED,compresslevel=6) as z:
     for name in ['manager','src','shared','bridge','chatbox','vendor','scripts','tests','docs']:
         put_tree(z,repo/name,'PagePilot/'+name)
-    for p in repo.iterdir():
-        if p.is_file() and p.name!='.gitignore':z.write(p,'PagePilot/'+p.name)
+    for name in ['build.ps1','global.json','README.md','LICENSE','THIRD-PARTY-NOTICES.md','Enable.cmd','Disable.cmd','Enable-Machine.cmd','Disable-Machine.cmd','Rollback-Machine.cmd','Manager-Machine.cmd','Replace-Machine.cmd','requirements-lock.txt','runtime.example.json']:
+        z.write(repo/name,'PagePilot/'+name)
     z.write(args.chatbox_source,'PagePilot/upstream-source/chatbox-v1.20.3.tar.gz')
 hashes=[]
 for p in [portable,source]:

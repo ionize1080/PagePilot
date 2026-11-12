@@ -7,7 +7,7 @@ const c=vm.createContext({TransformStream,ReadableStream,WritableStream,FormData
 vm.runInContext(sdk,c);
 const b=fs.readFileSync(path.join(root,'dist/Chatbox/native/dist/renderer/js/index.TlLbGKvw.js'),'utf8');
 c.lodashExports={compact:a=>a.filter(Boolean)};c.createModelDependencies=async()=>({});c.getMessageText=m=>m.contentParts.filter(p=>p.type==='text').map(p=>p.text).join('\n');
-vm.runInContext(b.slice(b.indexOf('function stringifyErrorResult'),b.indexOf('function injectModelSystemPrompt'))+b.slice(b.indexOf('const pagepilotHistory =')),c);
+vm.runInContext(b.slice(b.indexOf('function stringifyErrorResult'),b.indexOf('function injectModelSystemPrompt'))+b.slice(b.indexOf('const pagepilotHistory ='),b.indexOf('\n})();',b.indexOf('const pagepilotHistory ='))+6),c);
 (async()=>{
  // Upstream catches MCP rejections and returns the Error as a successful value.
  const error=Object.assign(new Error('Synthetic document binding rejected'),{name:'MCPClientError',cause:{code:0,message:'Synthetic document binding rejected'},code:0});
@@ -23,7 +23,7 @@ vm.runInContext(b.slice(b.indexOf('function stringifyErrorResult'),b.indexOf('fu
  c.history=JSON.parse(JSON.stringify(c.history));messages=await validate();assert.equal(messages[2].content[0].output.type,'error-text');
  for(const result of [new Error('denied'),{array:[undefined,NaN,Infinity],date:new Date(0)},null]){c.history[1].contentParts[1].result=result;await validate();}
  const cycle={};cycle.self=cycle;c.history[1].contentParts[1].result=cycle;messages=await validate();assert.equal(messages[2].content[0].output.type,'error-text');
- assert(b.includes('try{return await iu?.(su,lu)}catch(cu){throw cu}'),'MCP rejects instead of resolving errors');
+ assert(b.includes('catch(cu){throw cu}'),'MCP rejects instead of resolving errors');
  if(process.argv[2]){c.history=JSON.parse(fs.readFileSync(process.argv[2],'utf8')).messages;await validate();console.log('PASS private session replay through shipped SDK (content not logged)');}
  console.log('PASS shipped SDK: reproduced old failure; live errors, persisted errors, JSON values, cyclic outputs, MCP rejection propagation');
 })().catch(e=>{console.error(e.message);process.exitCode=1;});

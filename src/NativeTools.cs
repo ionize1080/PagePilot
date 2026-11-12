@@ -23,6 +23,7 @@ namespace PagePilot {
    // Bind mutations to the explicit full name returned by context.
    if(S(a,"document")!=(string)doc.FullName)throw new Exception("活动文档与请求不一致，请重新读取上下文。");
    if(name=="pagepilot_objects")return ObjectTools.Inspect(doc,a);
+   if(name=="pagepilot_embedded_snapshot")return ObjectTools.ExportReference(doc,a);
    if(name=="pagepilot_object_edit")return ObjectTools.Edit(doc,a);
    if(name=="pagepilot_object_create")return ObjectTools.Create(doc,a);
    if(name=="pagepilot_inspect_objects"){

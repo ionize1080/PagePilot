@@ -10,7 +10,7 @@
 |---|---|---|
 | SchemaVersion | 配置格式版本 | `1` |
 | DataDirectory | 偏好、标题规则和文档备份 | `%LOCALAPPDATA%\PagePilot` |
-| ProfileDirectory | Chatbox 配置、会话与设置缓存的父目录 | `%APPDATA%\PagePilot` |
+| ProfileDirectory | Chatbox 配置、会话、工作区引用与分析底稿的父目录 | `%APPDATA%\PagePilot` |
 | LogDirectory | 部署器、Word、Electron、MCP 事件日志 | `%LOCALAPPDATA%\PagePilot\logs` |
 | LogLevel | `debug` 为详细，`info` 减少高频事件 | `debug` |
 

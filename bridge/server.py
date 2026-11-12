@@ -55,6 +55,31 @@ install_save_hook()
 install_path_hook()
 register_tools()
 
+
+@mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+async def pagepilot_read_embedded(document: str, handle: str, operation: str = 'list', part: int = 1,
+        start: int = 1, count: int = 3, max_chars: int = 6000, query: str = '', page: int = 1, asset: int = 0, offset: int = 0) -> list:
+    """Read actual embedded PDFs/Office files/images in the CURRENT Word document without OLE activation. First pagepilot_objects(kind=ole/inline/shape) to get a fresh handle; call operation=list to distinguish document payloads from preview/icons and external links. Then select part and operation=outline/read/search/view. Same bounded parsing as workspaces; view returns an image for a vision model. External linked targets are NEVER fetched. Floating anchor snapshots may contain multiple objects, so inspect part names. Handles expire after edits. Never claim an OLE icon is document content."""
+    from workspace_server import worker
+    from mcp.types import TextContent, ImageContent
+    args = dict(locals())
+    # This internal path is supplied by the authenticated Word host, never the model.
+    snapshot = native('pagepilot_embedded_snapshot', dict(document=document, handle=handle))
+    package = Path(snapshot['packagePath'])
+    folder = Path(os.environ.get('PAGEPILOT_WORKSPACES') or str(Path(os.environ.get('PAGEPILOT_PROFILE', str(ROOT / 'data'))) / 'Workspaces'))
+    folder.mkdir(parents=True, exist_ok=True)
+    os.environ['PAGEPILOT_WORKSPACES'] = str(folder)
+    try:
+        arguments = {key: args[key] for key in ('operation','part','start','count','max_chars','query','page','asset','offset')}
+        result = await worker('embedded', dict(package_path=str(package), **arguments))
+        result['sourceDocument'] = document
+        if 'data' in result and 'mimeType' in result:
+            data, mime = result.pop('data'), result.pop('mimeType')
+            return [TextContent(type='text', text=json.dumps(result, ensure_ascii=False)), ImageContent(type='image', data=data, mimeType=mime)]
+        return [TextContent(type='text', text=json.dumps(result, ensure_ascii=False))]
+    finally:
+        package.unlink(missing_ok=True)
+
 # The upstream docx2pdf helper calls Quit on an existing Word application.
 # Replace only its implementation, preserving the upstream tool name/schema.
 # Export through the bound host so no user's Word process can be closed.
@@ -159,12 +184,12 @@ def pagepilot_edit_objects(document: str, operation: str, paragraph: int = 1, te
 
 @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
 def pagepilot_objects(document: str, kind: str = "schema", scope: dict = None, start: int = 1, count: int = 50) -> dict:
-    """Read schema FIRST for exact properties, operations and version limits. Enumerate live objects with expiring handles. kind: schema, stories, range, section, header, footer, table, cell, row, column, border, field, bookmark, control, footnote, endnote, toc, inline, shape, chart, ole, equation, paragraph, style. scope: area main/header/footer/story/shape/page; section, type (header 1 primary/2 first/3 even), chain, index, table, cell (1-based); start/end are absolute offsets within that story. count<=200. Cells enumerate physical cells safely in merged tables. Re-inspect after every edit. No OLE activation."""
+    """document MUST be the exact document.path from pagepilot_context (full path, not document.name). Read schema FIRST for exact properties, operations and version limits. Enumerate live objects with expiring handles. kind: schema, stories, range, section, header, footer, table, cell, row, column, border, field, bookmark, control, footnote, endnote, toc, inline, shape, chart, ole, equation, paragraph, style. scope: area main/header/footer/story/shape/page; section, type (header 1 primary/2 first/3 even), chain, index, table, cell (1-based); start/end are absolute offsets within that story. count<=200. Cells enumerate physical cells safely in merged tables. Re-inspect after every edit. No OLE activation."""
     return native("pagepilot_objects",dict(document=document,kind=kind,scope=scope or {},start=start,count=count))
 
 @mcp.tool(annotations=ToolAnnotations(readOnlyHint=False))
 def pagepilot_object_edit(document: str, handle: str, operation: str = "set", properties: dict = None, parameters: dict = None) -> dict:
-    """Edit an inspected live object. Read pagepilot_objects(kind=schema) first. set uses sparse exact Word property paths; text uses parameters.text. Other operations: delete, update, unlink, build_up, linearize, equation_text(text), split_cell(rows,columns), merge_cell(other_handle), tab_add(position,alignment,leader), tab_clear, dropdown_add(text,value), dropdown_delete/select(index), convert_inline/float, replace_image(path; inline or floating picture), series_set(index,name,values,categories), series_delete(index), row_add/column_add(before=1-based insertion index or omit to append; table handle), autofit(behavior 0 fixed/1 content/2 window; table), columns_set(count 1..12; section). row/column/border enumerate using scope.table, optional scope.cell for cell borders. Rejects stale handles before writing. Backup and undo; check returned status (completed/not_applied/recovery_required), not merely transport success."""
+    """document MUST be the exact document.path from pagepilot_context. Edit an inspected live object. Read pagepilot_objects(kind=schema) first. set uses sparse exact Word property paths; text uses parameters.text. Other operations: delete, update, unlink, build_up, linearize, equation_text(text), split_cell(rows,columns), merge_cell(other_handle), tab_add(position,alignment,leader), tab_clear, dropdown_add(text,value), dropdown_delete/select(index), convert_inline/float, replace_image(path; inline or floating picture), series_set(index,name,values,categories), series_delete(index), row_add/column_add(before=1-based insertion index or omit to append; table handle), autofit(behavior 0 fixed/1 content/2 window; table), columns_set(count 1..12; section). row/column/border enumerate using scope.table, optional scope.cell for cell borders. Rejects stale handles before writing. Backup and undo; check returned status (completed/not_applied/recovery_required), not merely transport success."""
     return native("pagepilot_object_edit",dict(document=document,handle=handle,operation=operation,properties=properties or {},parameters=parameters or {}))
 
 @mcp.tool(annotations=ToolAnnotations(readOnlyHint=False))

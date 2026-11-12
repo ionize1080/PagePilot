@@ -15,10 +15,11 @@ const context = vm.createContext({ URL, Date, BaseError: Error, lodashExports: {
 let code = range(bundle, 'function stringifyErrorResult', 'function injectModelSystemPrompt') +
   range(bundle, 'function createInitialState', 'const DEFAULT_LINES=') +
   range(sdk, 'function ur(e)', 'function fp(');
-if (bundle.includes('const pagepilotHistory =')) code += bundle.slice(bundle.indexOf('const pagepilotHistory ='));
+if (bundle.includes('const pagepilotHistory =')) code += bundle.slice(bundle.indexOf('const pagepilotHistory ='),bundle.indexOf('\n})();',bundle.indexOf('const pagepilotHistory ='))+6);
 const flag = bundle.match(/preserveReasoning:(nu\.provider===ModelProviderEnum\.DeepSeek[^}]*)(?=\})/);
 assert(flag, 'Production provider detection found');
 code += `\nfunction preserve(modelId, apiHost, provider='custom'){const nu={provider},Du={modelId,options:{apiHost}},ModelProviderEnum={DeepSeek:'deepseek'};return ${flag[1]};}`;
+code += '\n' + fs.readFileSync(path.join(root,'chatbox/workspace-vision.js'),'utf8');
 vm.runInContext(code, context);
 const evaluate = expression => vm.runInContext(expression, context);
 const send = async (url, messages) => {

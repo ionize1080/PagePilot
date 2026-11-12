@@ -10,7 +10,7 @@ async def main():
         bridge.host=lambda action,**kw:environment
         result=await bridge.pagepilot_capabilities()
         catalog={t['name']:t for t in result['tools']}
-        assert len(catalog)==132
+        assert len(catalog)==133
         assert catalog['add_digital_signature']['status']=='limited'
         if major==14:
             assert all(catalog[n]['status']=='unavailable' for n in ['word_live_reply_to_comment','word_live_resolve_comment'])
