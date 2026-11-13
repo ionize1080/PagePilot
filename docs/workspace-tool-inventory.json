@@ -524,5 +524,163 @@
       "additionalProperties": true
     },
     "title": "Workspace Analyze"
+  },
+  {
+    "_meta": {
+      "fastmcp": {
+        "tags": []
+      }
+    },
+    "annotations": {
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false,
+      "readOnlyHint": true
+    },
+    "description": "Detect installed Excel and probe modern functions. Starts and closes a separate HIDDEN Excel instance; never attaches to user workbooks. Native operations require Windows Excel 2010 Standard or newer. Default compatibility is excel2010, classic native PivotTables (version 14), ordinary charts and legacy formulas. Modern functions are tested individually, not inferred from version 16. On 2010, use transform lookup/filters/sort_by/unique_by to compute compatible result tables. These are values, not spill formulas. No Power Query, Data Model, Power Pivot, Python-in-Excel or Copilot automation. If Excel is unavailable, workspace_analyze remains an offline option.",
+    "inputSchema": {
+      "properties": {
+        "workspace_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "workspace_id"
+      ],
+      "type": "object",
+      "additionalProperties": false
+    },
+    "name": "workspace_excel_info",
+    "outputSchema": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "title": "Workspace Excel Info"
+  },
+  {
+    "_meta": {
+      "fastmcp": {
+        "tags": []
+      }
+    },
+    "annotations": {
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false,
+      "readOnlyHint": true
+    },
+    "description": "Inspect an XLSX workbook's sheets, tables, native PivotTables and chart counts. Optionally read one bounded A1 cell_range in a sheet with cached values, formulas, Excel errors and continuation. max_rows<=100, max_columns<=50; long text previews are truncated at 500 characters. Reading does not start Excel or recalculate. Use revision as expected_revision when editing. For non-XLSX data, workspace_analyze can create an XLSX working paper first.",
+    "inputSchema": {
+      "properties": {
+        "workspace_id": {
+          "type": "string"
+        },
+        "file_id": {
+          "type": "string"
+        },
+        "sheet": {
+          "default": "",
+          "type": "string"
+        },
+        "cell_range": {
+          "default": "",
+          "type": "string"
+        },
+        "max_rows": {
+          "default": 50,
+          "type": "integer"
+        },
+        "max_columns": {
+          "default": 20,
+          "type": "integer"
+        },
+        "expected_revision": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "workspace_id",
+        "file_id"
+      ],
+      "type": "object",
+      "additionalProperties": false
+    },
+    "name": "workspace_excel_read",
+    "outputSchema": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "title": "Workspace Excel Read"
+  },
+  {
+    "_meta": {
+      "fastmcp": {
+        "tags": []
+      }
+    },
+    "annotations": {
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false,
+      "readOnlyHint": false
+    },
+    "description": "Run 1..40 declarative operations in a separate HIDDEN Excel, save a NEW retained XLSX copy, and close Excel. Requires Excel 2010 Standard+. Never changes source files or existing user workbooks. Chain returned file_id for later edits; use workspace_excel_read to inspect first. file_id='' creates a workbook with Sheet1. Batches fail without publishing a partial file. Each range is a finite A1 rectangle, <=100001 rows/200 columns/2M cells.\n\nactions each use op and these fields:\nadd_sheet: name; rename_sheet/copy_sheet: sheet,name; delete_sheet: sheet (copy only, at least one remains).\nwrite_range: sheet,cell (default A1),values (rectangular 2D literals; strings never execute).\nformula: sheet,range,formula (English =SUM/IF/SUMIFS/COUNTIFS/VLOOKUP/INDEX/MATCH etc; relative fill right/down). excel2010 is default. Use compatibility='installed' and dynamic=true only after workspace_excel_info confirms newer functions; output then may require newer Excel. No external or structured references, macros or arbitrary code.\nclear_range: sheet,range. format: sheet,range,number_format,bold,autofit.\ntable: sheet,range (header row included),name (ASCII identifier).\nsort: sheet,range,sort_by:[{column,descending:false}]. filter: sheet,range,filters:[{column,op:eq/ne/gt/ge/lt/le/contains/blank/not_blank,value}] (hides rows, retains data). deduplicate: sheet,range,columns:[header names].\ntransform: sheet,range,target_sheet,target_cell=A1; optional trim:[columns],numeric:[columns],fill:[{column,value}],lookup:{sheet,range,left_key,right_key,columns:[return names],duplicates:first/last/error,if_not_found,case_sensitive:false},filters:[{column,op:eq/ne/gt/ge/lt/le/contains/in/blank/not_blank,value}],unique_by:[columns],sort_by:[{column,descending}],select:[columns]. Applies in that order. Case-insensitive exact lookup, first duplicate by default. Writes a compatible VALUES table, keeping source cells intact. Covers XLOOKUP-like joins and FILTER/SORT/UNIQUE tasks on Excel 2010, without spill formulas.\ndescribe: sheet,range,columns:[numeric headers],target_sheet. Reports count/missing/sum/mean/median/min/max/sample stdev/inclusive Q1,Q3. Non-numeric values fail. correlation: same, exactly two columns; Pearson, pairwise blank omission reported, constant columns fail.\npivot: source_sheet,source_range (includes unique headers),target_sheet,target_cell=A3,name (ASCII),rows:[headers],columns:[headers],filters:[{field,value}],values:[{field,aggregate:sum/count/mean/min/max/product/count_numbers/stdev/stdevp/var/varp,name,number_format}],grand_totals:true. Creates a REAL Excel 2010 PivotTable, adjustable and refreshable, with saved cache. No distinct count/Data Model; use transform unique_by first.\nrefresh_pivot: sheet,name; optional source_sheet,source_range to include added rows. Refreshes local cache; no external data connections.\nchart: sheet,range,target_sheet(optional),type:column/bar/line/pie/scatter/area,title. Uses Excel 2010 chart types.\n\nInput XLSX with macros, external connections or embedded objects is rejected; source is never executed as code. Result includes saved file ID, sheet inventory, action results and provenance. Generated files appear under the workspace's analysis papers. Cite actual computed output, not just formulas; Word edits retain their normal approval workflow.",
+    "inputSchema": {
+      "properties": {
+        "workspace_id": {
+          "type": "string"
+        },
+        "actions": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "file_id": {
+          "default": "",
+          "type": "string"
+        },
+        "output_name": {
+          "default": "Excel分析底稿",
+          "type": "string"
+        },
+        "expected_revision": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "compatibility": {
+          "default": "excel2010",
+          "type": "string"
+        }
+      },
+      "required": [
+        "workspace_id",
+        "actions"
+      ],
+      "type": "object",
+      "additionalProperties": false
+    },
+    "name": "workspace_excel_edit",
+    "outputSchema": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "title": "Workspace Excel Edit"
   }
 ]

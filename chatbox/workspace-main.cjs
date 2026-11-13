@@ -51,10 +51,14 @@ class WorkspaceStore {
     if (path.dirname(target) !== folder || fs.lstatSync(target).isSymbolicLink() || fs.realpathSync.native(folder).toLowerCase() !== folder.toLowerCase()) throw Error('底稿路径发生变化');
     return target;
   }
-  adopt(from, to) {
+  adopt(from, to, workspaceId) {
     if (from === to) return;
-    const previous = this.get(from), next = this.get(to);
-    if ((!previous.sources.length && !previous.collections.length && !this.outputCount(previous)) || next.sources.length || next.collections.length || this.outputCount(next)) return;
+    const next = this.get(to);
+    if (workspaceId && next.id === workspaceId) return;
+    const previous = this.get(from);
+    if (workspaceId && previous.id !== workspaceId) throw Error('参考工作区已变化，请重新发送消息');
+    if (next.sources.length || next.collections.length || this.outputCount(next)) throw Error('目标聊天已有工作区资料，无法继承新聊天的资料');
+    // Keep even an empty captured workspace: MCP may create working papers in it.
     const indexFile = path.join(this.folder, 'sessions.json'), index = read(indexFile, {});
     const hash = x => crypto.createHash('sha256').update(x).digest('hex');
     index[hash(to)] = previous.id;
@@ -208,7 +212,7 @@ function install({ ipcMain, dialog, primary, folder, root }) {
     if (!win || event.sender !== win.webContents || event.senderFrame !== win.webContents.mainFrame || !event.senderFrame.url.startsWith('file:')) throw Error('Invalid sender');
     const session = args.session;
     if (action === 'preferences') return args.value ? savePreferences(folder, args.value) : preferences(folder);
-    if (action === 'adopt') { store.adopt(args.from, session); return {}; }
+    if (action === 'adopt') { store.adopt(args.from, session, args.workspace_id); return {}; }
     if (action === 'summary') return store.summary(session, args.directory_id, args.cursor);
     if (action === 'context') { const data = store.get(session); return { workspace_id: data.id, sourceCount: data.sources.length + store.outputCount(data) }; }
     if (action === 'export') {

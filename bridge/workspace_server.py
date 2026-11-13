@@ -1,4 +1,4 @@
-"""Separate, read-only stdio MCP. No Word COM, HTTP listener or model credentials."""
+"""Workspace stdio MCP. Reads references and creates managed analysis copies."""
 import asyncio
 import json
 import os
@@ -13,6 +13,7 @@ from mcp.types import ToolAnnotations, TextContent, ImageContent
 mcp = FastMCP('PagePilot Workspace')
 READONLY = ToolAnnotations(readOnlyHint=True, destructiveHint=False, idempotentHint=True, openWorldHint=False)
 semaphore = asyncio.Semaphore(2)
+excel_semaphore = asyncio.Semaphore(1)
 
 
 async def worker(operation, arguments):
@@ -21,7 +22,7 @@ async def worker(operation, arguments):
             stdin=asyncio.subprocess.PIPE, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.DEVNULL,
             creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0)
         try:
-            output, _ = await asyncio.wait_for(proc.communicate(json.dumps(dict(operation=operation, arguments=arguments)).encode()), 45)
+            output, _ = await asyncio.wait_for(proc.communicate(json.dumps(dict(operation=operation, arguments=arguments)).encode()), 180 if operation in ('excel_info', 'excel_edit') else 45)
             if len(output) > 8 * 1024 * 1024:
                 raise ValueError('解析结果过大，请缩小读取范围。')
             result = json.loads(output)
@@ -88,6 +89,44 @@ async def workspace_analyze(workspace_id: str, file_id: str = '', sheet: str = '
         metrics: list[dict] | None = None, missing: str = 'error', output_name: str = '分析底稿') -> dict:
     """Analyze data OFFLINE, without Excel, and save a retained XLSX working COPY in this workspace. NEVER overwrites sources. Input: file_id (XLSX/XLSM/XLS/CSV/TSV; optional sheet/header_row), OR columns + rows for a new workbook. calculations=[{name:'Profit',expression:'col("Revenue") - col("Cost")'}]; expressions allow + - * / abs() round(x,2), previous calculated columns. filters=[{column,op:eq/ne/gt/ge/lt/le/contains,value}]. group_by lists columns; pivot_column spreads categories across columns; metrics=[{column,op:sum/mean/min/max/count/count_distinct,name}]. missing=error (default) or skip (reports skipped values). Max 100000 rows/2M cells. Supported calculations actually execute with Decimal; formula cells include computed values. Source XLSX same-sheet formulas are recalculated (arithmetic, SUM, COUNT, AVERAGE, MIN, MAX, IF, ABS, ROUND, AND/OR/NOT). Unsupported functions, cross-sheet links and cycles fail explicitly; legacy XLS uses labeled cached values. Original source formulas are retained as text for audit. Pivot is a computed cross-tab, not an interactive Excel PivotTable. Result preview is bounded; inspect saved file for more. Paper includes source rows, calculations, summaries, source hash, provenance. User can export/delete in UI. Cite saved paper and source; use approved Word tools to write conclusions."""
     return await worker('analyze', locals())
+
+
+@mcp.tool(annotations=READONLY)
+async def workspace_excel_info(workspace_id: str) -> dict:
+    """Detect installed Excel and probe modern functions. Starts and closes a separate HIDDEN Excel instance; never attaches to user workbooks. Native operations require Windows Excel 2010 Standard or newer. Default compatibility is excel2010, classic native PivotTables (version 14), ordinary charts and legacy formulas. Modern functions are tested individually, not inferred from version 16. On 2010, use transform lookup/filters/sort_by/unique_by to compute compatible result tables. These are values, not spill formulas. No Power Query, Data Model, Power Pivot, Python-in-Excel or Copilot automation. If Excel is unavailable, workspace_analyze remains an offline option."""
+    async with excel_semaphore:
+        return await worker('excel_info', {'workspace_id': workspace_id})
+
+
+@mcp.tool(annotations=READONLY)
+async def workspace_excel_read(workspace_id: str, file_id: str, sheet: str = '', cell_range: str = '',
+        max_rows: int = 50, max_columns: int = 20, expected_revision: str | None = None) -> dict:
+    """Inspect an XLSX workbook's sheets, tables, native PivotTables and chart counts. Optionally read one bounded A1 cell_range in a sheet with cached values, formulas, Excel errors and continuation. max_rows<=100, max_columns<=50; long text previews are truncated at 500 characters. Reading does not start Excel or recalculate. Use revision as expected_revision when editing. For non-XLSX data, workspace_analyze can create an XLSX working paper first."""
+    return await worker('excel_read', locals())
+
+
+@mcp.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=False, openWorldHint=False))
+async def workspace_excel_edit(workspace_id: str, actions: list[dict], file_id: str = '', output_name: str = 'Excel分析底稿',
+        expected_revision: str | None = None, compatibility: str = 'excel2010') -> dict:
+    """Run 1..40 declarative operations in a separate HIDDEN Excel, save a NEW retained XLSX copy, and close Excel. Requires Excel 2010 Standard+. Never changes source files or existing user workbooks. Chain returned file_id for later edits; use workspace_excel_read to inspect first. file_id='' creates a workbook with Sheet1. Batches fail without publishing a partial file. Each range is a finite A1 rectangle, <=100001 rows/200 columns/2M cells.
+
+    actions each use op and these fields:
+    add_sheet: name; rename_sheet/copy_sheet: sheet,name; delete_sheet: sheet (copy only, at least one remains).
+    write_range: sheet,cell (default A1),values (rectangular 2D literals; strings never execute).
+    formula: sheet,range,formula (English =SUM/IF/SUMIFS/COUNTIFS/VLOOKUP/INDEX/MATCH etc; relative fill right/down). excel2010 is default. Use compatibility='installed' and dynamic=true only after workspace_excel_info confirms newer functions; output then may require newer Excel. No external or structured references, macros or arbitrary code.
+    clear_range: sheet,range. format: sheet,range,number_format,bold,autofit.
+    table: sheet,range (header row included),name (ASCII identifier).
+    sort: sheet,range,sort_by:[{column,descending:false}]. filter: sheet,range,filters:[{column,op:eq/ne/gt/ge/lt/le/contains/blank/not_blank,value}] (hides rows, retains data). deduplicate: sheet,range,columns:[header names].
+    transform: sheet,range,target_sheet,target_cell=A1; optional trim:[columns],numeric:[columns],fill:[{column,value}],lookup:{sheet,range,left_key,right_key,columns:[return names],duplicates:first/last/error,if_not_found,case_sensitive:false},filters:[{column,op:eq/ne/gt/ge/lt/le/contains/in/blank/not_blank,value}],unique_by:[columns],sort_by:[{column,descending}],select:[columns]. Applies in that order. Case-insensitive exact lookup, first duplicate by default. Writes a compatible VALUES table, keeping source cells intact. Covers XLOOKUP-like joins and FILTER/SORT/UNIQUE tasks on Excel 2010, without spill formulas.
+    describe: sheet,range,columns:[numeric headers],target_sheet. Reports count/missing/sum/mean/median/min/max/sample stdev/inclusive Q1,Q3. Non-numeric values fail. correlation: same, exactly two columns; Pearson, pairwise blank omission reported, constant columns fail.
+    pivot: source_sheet,source_range (includes unique headers),target_sheet,target_cell=A3,name (ASCII),rows:[headers],columns:[headers],filters:[{field,value}],values:[{field,aggregate:sum/count/mean/min/max/product/count_numbers/stdev/stdevp/var/varp,name,number_format}],grand_totals:true. Creates a REAL Excel 2010 PivotTable, adjustable and refreshable, with saved cache. No distinct count/Data Model; use transform unique_by first.
+    refresh_pivot: sheet,name; optional source_sheet,source_range to include added rows. Refreshes local cache; no external data connections.
+    chart: sheet,range,target_sheet(optional),type:column/bar/line/pie/scatter/area,title. Uses Excel 2010 chart types.
+
+    Input XLSX with macros, external connections or embedded objects is rejected; source is never executed as code. Result includes saved file ID, sheet inventory, action results and provenance. Generated files appear under the workspace's analysis papers. Cite actual computed output, not just formulas; Word edits retain their normal approval workflow."""
+    arguments = locals()
+    async with excel_semaphore:
+        return await worker('excel_edit', arguments)
 
 
 if __name__ == '__main__':

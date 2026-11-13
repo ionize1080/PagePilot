@@ -624,6 +624,9 @@ if __name__ == '__main__':
         elif request['operation'] == 'analyze':
             from workspace_analysis import analyze
             result = analyze(**request['arguments'])
+        elif request['operation'] in ('excel_info', 'excel_read', 'excel_edit'):
+            import workspace_excel
+            result = getattr(workspace_excel, request['operation'][6:])(**request['arguments'])
         else:
             result = OPERATIONS[request['operation']](**request['arguments'])
         print(json.dumps({'result': result}, ensure_ascii=False))

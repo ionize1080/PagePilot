@@ -1,5 +1,6 @@
 const {app,BrowserWindow,ipcMain}=require('electron');
 const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
+const screenshots=!process.argv.includes('--no-screenshots');
 const root=path.resolve(__dirname,'..'),out=path.join(root,'.temp/workspace-ui');fs.mkdirSync(out,{recursive:true});
 app.setPath('userData',path.join(out,'profile'));
 let win;const selected=path.join(root,'.temp/workspace-tests/references');
@@ -13,7 +14,7 @@ app.whenReady().then(async()=>{
  win=new BrowserWindow({show:false,width:900,height:760,webPreferences:{preload:path.join(root,'chatbox/workspace-preload.cjs'),sandbox:true,contextIsolation:true,nodeIntegration:false}});
  const errors=[];win.webContents.on('console-message',details=>{if(details.level==='error')errors.push(details.message)});
  await win.loadFile(html);await win.webContents.executeJavaScript(fs.readFileSync(path.join(root,'chatbox/workspace-ui.js'),'utf8'));
- win.showInactive();
+ if(screenshots)win.showInactive();
  const js=code=>win.webContents.executeJavaScript(code,true),q=`document.querySelector('pagepilot-workspace').shadowRoot`;
  await until(()=>js(`!!${q}.querySelector('#trigger')`),'component');
  await js(`document.querySelector('#message-input').value='保留的研究草稿';${q}.querySelector('#trigger').click()`);
@@ -27,10 +28,10 @@ app.whenReady().then(async()=>{
   const bounds=await js(`(()=>{const p=${q}.querySelector('#panel'),r=p.getBoundingClientRect();return {left:r.left,right:r.right,top:r.top,bottom:r.bottom,w:innerWidth,h:innerHeight,overflow:p.scrollWidth>p.clientWidth}})()`);
   assert(bounds.left>=0&&bounds.right<=bounds.w&&bounds.top>=0&&bounds.bottom<=bounds.h&&!bounds.overflow,JSON.stringify(bounds));
   assert.equal(await js(`document.querySelector('#message-input').value`),'保留的研究草稿');
-  fs.writeFileSync(path.join(out,`workspace-${width}.png`),(await win.webContents.capturePage()).toPNG());pass('popover fits '+width+' and preserves draft');
+  if(screenshots)fs.writeFileSync(path.join(out,`workspace-${width}.png`),(await win.webContents.capturePage()).toPNG());pass('popover fits '+width+' and preserves draft');
  }
  await js(`document.documentElement.classList.add('dark');document.querySelector('pagepilot-workspace').place()`);assert(await js(`document.querySelector('pagepilot-workspace').hasAttribute('dark')`));
- fs.writeFileSync(path.join(out,'workspace-dark.png'),(await win.webContents.capturePage()).toPNG());pass('dark theme');
+ if(screenshots)fs.writeFileSync(path.join(out,'workspace-dark.png'),(await win.webContents.capturePage()).toPNG());pass('dark theme');
  await js(`${q}.querySelector('#settings').click()`);await until(()=>js(`!${q}.querySelector('#prefs').hidden`),'preferences');
  await js(`${q}.querySelector('#limit').value='200';${q}.querySelector('#save').click()`);await until(()=>js(`${q}.querySelector('#status').textContent==='已保存'`),'save preferences');
  assert.equal((await js(`window.pagepilotFiles.preferences()`)).maxFileMB,200);pass('persistent size preference');
@@ -60,6 +61,27 @@ app.whenReady().then(async()=>{
  await js(`${q}.querySelector('[data-id="${a}"] [title="删除虚拟文件夹"]').click()`);
  await until(()=>Promise.resolve(!store.get('qa-main').collections.length),'delete virtual subtree');assert(fs.existsSync(path.join(selected,'report.docx')));
  pass('virtual-folder create, nested drag, file in/out, keyboard rename, delete; real source retained');
+ // First send replaces the home component. Only submission may adopt its draft;
+ // navigating from the home page to an unrelated chat must leave the draft alone.
+ store.add('new',[path.join(selected,'report.docx')]);
+ store.collection('new','create',{name:'发送前的资料'});
+ const draft=store.get('new');
+ await js(`window.__session='new';window.dispatchEvent(new Event('pagepilot:session'))`);
+ await until(()=>js(`${q}.querySelector('#badge').textContent==='1'&&${q}.querySelectorAll('.row').length===2`),'draft references');
+ await js(`window.__session='qa-unrelated';window.dispatchEvent(new Event('pagepilot:session'))`);
+ await until(()=>js(`${q}.querySelector('#badge').textContent===''`),'unrelated chat stays empty');
+ assert.equal(store.get('new').id,draft.id);assert.equal(store.get('qa-unrelated').sources.length,0);
+ await js(`window.__session='new';window.dispatchEvent(new Event('pagepilot:session'))`);
+ await until(()=>js(`${q}.querySelector('#badge').textContent==='1'`),'draft retained on return');
+ await js(`(async()=>{const context=await window.pagepilotFiles.context('new');await window.pagepilotFiles.adopt('new','qa-sent',context.workspace_id);document.querySelector('pagepilot-workspace').remove();window.__session='qa-sent';window.dispatchEvent(new Event('pagepilot:session'));})()`);
+ await until(()=>js(`${q}.querySelector('#badge').textContent==='1'&&${q}.querySelectorAll('.row').length===2`),'references after first-send remount');
+ await js(`${q}.querySelector('#trigger').click()`);
+ assert.equal((await js(`window.pagepilotFiles.context(window.pagepilotWorkspaceSession())`)).workspace_id,draft.id);
+ assert.equal(await js(`Array.from(${q}.querySelectorAll('.name')).some(e=>e.textContent==='report.docx')`),true);
+ assert.notEqual(store.get('new').id,draft.id);
+ const rejected=await js(`window.pagepilotFiles.adopt('new','qa-stale','00000000000000000000000000000000').then(()=>false,()=>true)`);
+ assert(rejected,'IPC must forward the captured workspace ID for stale-send validation');
+ pass('first-send remount retains files and folders; UI/MCP IDs agree; unrelated chats and future drafts stay separate');
  await js(`window.__session='qa-other';window.dispatchEvent(new Event('pagepilot:session'))`);await until(()=>js(`${q}.querySelector('#badge').textContent===''`),'isolation');pass('chat workspace isolation');
  const context=store.get('qa-other');
  const paper=await store.worker('analyze',{workspace_id:context.id,columns:['A'],rows:[[12],[18]],metrics:[{column:'A',op:'sum'}]});

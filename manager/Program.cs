@@ -18,6 +18,7 @@ namespace PagePilot.Deployment {
  public sealed class Entry {public string Path{get;set;}public int View{get;set;}public Tree Before{get;set;}public Tree After{get;set;}}
  public sealed class Journal {public List<Entry> ReplacedUserEntries{get;set;}public string UserSid{get;set;}public string Scope{get;set;}public string Root{get;set;}public string Operation{get;set;}public List<Entry> Entries{get;set;}public string State{get;set;}}
  internal static partial class Manager {
+  static string VersionLabel=>typeof(Manager).Assembly.GetName().Version.ToString(3);
   static readonly string[] Classes={"PagePilot.Connect","PagePilot.AiPane","PagePilot.Pane"};
   static readonly string[] Ids={"{0E057EBB-B35B-4A31-9B65-3DF44E8034CE}","{246818DC-B9A5-4328-9E71-69575A825B92}","{79CEEFC8-67F4-4F55-9475-24C0681BFBBD}"};
   const string Addin=@"Software\Microsoft\Office\Word\Addins\PagePilot.Connect";

@@ -6,7 +6,7 @@
   contextBridge.exposeInMainWorld('pagepilotFiles', {
     summary: (session, directory_id = '', cursor = 0) => invoke('summary', { session, directory_id, cursor }),
     context: session => invoke('context', { session }),
-    adopt: (from, session) => invoke('adopt', { from, session }),
+    adopt: (from, session, workspace_id) => invoke('adopt', { from, session, workspace_id }),
     choose: (session, folder, parent = '') => invoke('choose', { session, folder, parent }),
     collection: (session, args) => invoke('collection', { session, ...args }),
     move: (session, ids, parent, before = '', after = '') => invoke('move', { session, ids, parent, before, after }),

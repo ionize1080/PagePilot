@@ -101,7 +101,7 @@
     async run(fn) { try { this.status('正在处理…'); await fn(); } catch (e) { this.status(e.message, true); } }
     async onSession() {
       const next = session(), previous = this.currentSession; this.currentSession = next;
-      if (previous !== next) { this.stack = []; this.selection.clear(); this.endOrganize(); ++this.request; if (previous === 'new') await api.adopt(previous, next); }
+      if (previous !== next) { this.stack = []; this.selection.clear(); this.endOrganize(); ++this.request; }
       await this.refresh();
     }
     async choose(folder) { await this.run(async () => this.added(await api.choose(session(), folder, this.virtualParent()),true)); }
